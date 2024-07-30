@@ -19,25 +19,32 @@ import numpy as np
 import itertools
 
 
+# define direction: 0: top, 1: right, 2: bottom, 3: left
+
+DIRECTION = {
+    'top': 0,
+    'right': 1,
+    'bottom': 2,
+    'left': 3
+}
+
+
 class Tile:
     """
     A class to represent a tile in the game.
-
-    Attributes:
-        name (str): The name of the tile.
-        img (PIL.Image): The image of the tile.
-        edges (tuple of 4 ints): The edges of the tile (top, right, bottom, left).
     """
 
     index_counter = itertools.count()
 
-    def __init__(self, name, img, edges):
+    def __init__(self, name, img, edges, flow):
         """
         Initialize a new instance of the class.
 
         Args:
+            name (str): The name of the tile.
             img (PIL.Image): The input image.
-            edges (tuple of 4 ints): (top, right, bottom, left) edges of the tile.
+            edges (tuple of 4 ints): (top, right, bottom, left) edges of the tile.  When 2 edge on different tiles have the same value, they can be connected.
+            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile.
 
         Returns:
             None
@@ -46,6 +53,7 @@ class Tile:
         self.img = img
         self.edges = edges
         self.index = next(Tile.index_counter)
+        self.flow = flow
 
     def rotate(self, n) -> 'Tile':
         """
@@ -59,7 +67,12 @@ class Tile:
         """
         rotated_img = self.img.rotate(n * 90)
         rotated_edges = self.edges[n:] + self.edges[:n]
-        return Tile(self.name, rotated_img, rotated_edges)
+        flow = []
+        for i, o in self.flow:
+            i = (i + n) % 4
+            o = (o + n) % 4
+            flow.append((i, o))
+        return Tile(self.name, rotated_img, rotated_edges, flow)
 
     def flip(self) -> 'Tile':
         """
@@ -73,7 +86,12 @@ class Tile:
         """
         flipped_img = self.img.transpose(Image.FLIP_LEFT_RIGHT)
         flipped_edges = self.edges[2:] + self.edges[:2]
-        return Tile(self.name, flipped_img, flipped_edges)
+        flow = []
+        for i, o in self.flow:
+            i = (i + 2) % 4
+            o = (o + 2) % 4
+            flow.append((i, o))
+        return Tile(self.name, flipped_img, flipped_edges, flow)
 
     @property
     def image_with_edge_indicators(self) -> Image:
@@ -119,11 +137,18 @@ def create_tiles() -> list[Tile]:
     """
 
     tiles = []
-    empty_tile = Tile('Empty', Image.open('images/Empty.png'), (0, 0, 0, 0))
-    curve_tile = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0))
+    empty_tile = Tile('Empty', Image.open(
+        'images/Empty.png'), (0, 0, 0, 0), [])
+    curve_tile = Tile('Curve', Image.open('images/Curve.png'),
+                      (0, 1, 1, 0), [(DIRECTION['right'], DIRECTION['bottom']),
+                                     (DIRECTION['bottom'], DIRECTION['right'])])
     straight_tile = Tile('Straight', Image.open(
-        'images/Straight.png'), (1, 0, 1, 0))
-    t_turn_tile = Tile('T_turn', Image.open('images/T turn.png'), (1, 0, 1, 1))
+        'images/Straight.png'), (1, 0, 1, 0), [(DIRECTION['top'], DIRECTION['bottom']),
+                                               (DIRECTION['bottom'], DIRECTION['top'])])
+    t_turn_tile = Tile('T_turn', Image.open('images/T turn.png'), (1, 0, 1, 1),
+                       [(DIRECTION['top'], DIRECTION['bottom']),
+                        (DIRECTION['left'], DIRECTION['bottom']),
+                        (DIRECTION['bottom'], DIRECTION['left'])])
 
     tiles.append(empty_tile)
     tiles.append(curve_tile)
