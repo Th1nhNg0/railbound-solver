@@ -1,16 +1,5 @@
 """
 This module contains the Tile class that represents a tile in the game.
-
-The Tile class has the following attributes:
-    - name (str): The name of the tile.
-    - img (PIL.Image): The image of the tile.
-    - edges (tuple of 4 ints): The edges of the tile (top, right, bottom, left).
-
-The Tile class has the following methods:
-    - rotate(n: int) -> Tile: Rotates the tile by n * 90 degrees.
-    - flip() -> Tile: Flips the tile horizontally.
-    - __str__() -> str: Returns a string representation of the tile.
-    - __repr__() -> str: Returns a string representation of the tile.
 """
 
 from PIL import Image, ImageDraw
@@ -44,7 +33,7 @@ class Tile:
             name (str): The name of the tile.
             img (PIL.Image): The input image.
             edges (tuple of 4 ints): (top, right, bottom, left) edges of the tile.  When 2 edge on different tiles have the same value, they can be connected.
-            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile.
+            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile. The direction is defined as 0: top, 1: right, 2: bottom, 3: left based on the tile it self. Example: 0 mean the object is coming from the top of the tile.
 
         Returns:
             None
@@ -65,8 +54,8 @@ class Tile:
         Returns:
             Tile: A new Tile instance with the rotated image and edges.
         """
-        rotated_img = self.img.rotate(n * 90)
-        rotated_edges = self.edges[n:] + self.edges[:n]
+        rotated_img = self.img.rotate(n * -90)
+        rotated_edges = self.edges[-n:] + self.edges[:-n]
         flow = []
         for i, o in self.flow:
             i = (i + n) % 4
@@ -74,26 +63,41 @@ class Tile:
             flow.append((i, o))
         return Tile(self.name, rotated_img, rotated_edges, flow)
 
-    def flip(self) -> 'Tile':
+    def flip(self, axes='vertical') -> 'Tile':
         """
         Create a new Tile instance with the flipped image and edges.
 
         Args:
-            None
+            axes (str): The axes to flip the image. vertical or horizontal.
 
         Returns:
             Tile: A new Tile instance with the flipped image and edges.
         """
-        flipped_img = self.img.transpose(Image.FLIP_LEFT_RIGHT)
-        flipped_edges = self.edges[2:] + self.edges[:2]
-        flow = []
-        for i, o in self.flow:
-            i = (i + 2) % 4
-            o = (o + 2) % 4
-            flow.append((i, o))
+        if axes == 'vertical':
+            flipped_img = self.img.transpose(Image.FLIP_TOP_BOTTOM)
+            flipped_edges = (
+                self.edges[2], self.edges[1], self.edges[0], self.edges[3])
+            flow = []
+            for i, o in self.flow:
+                if i % 2 == 0:
+                    i = (i + 2) % 4
+                if o % 2 == 0:
+                    o = (o + 2) % 4
+                flow.append((i, o))
+        elif axes == 'horizontal':
+            flipped_img = self.img.transpose(Image.FLIP_LEFT_RIGHT)
+            flipped_edges = (
+                self.edges[0], self.edges[3], self.edges[2], self.edges[1])
+            flow = []
+            for i, o in self.flow:
+                if i % 2 == 1:
+                    i = (i + 2) % 4
+                if o % 2 == 1:
+                    o = (o + 2) % 4
+                flow.append((i, o))
         return Tile(self.name, flipped_img, flipped_edges, flow)
 
-    @property
+    @ property
     def image_with_edge_indicators(self) -> Image:
         """
         Create a new image with the edge indicators. The edge indicators are
@@ -119,10 +123,10 @@ class Tile:
         return img
 
     def __str__(self) -> str:
-        return f'{self.name}-{self.index}'
+        return f'{self.name}(index={self.index},edges={self.edges},flow={self.flow})'
 
     def __repr__(self) -> str:
-        return f'{self.name}(index={self.index},edges={self.edges})'
+        return f'{self.name}(index={self.index},edges={self.edges}),flow={self.flow})'
 
 
 def create_tiles() -> list[Tile]:
@@ -147,8 +151,8 @@ def create_tiles() -> list[Tile]:
                                                (DIRECTION['bottom'], DIRECTION['top'])])
     t_turn_tile = Tile('T_turn', Image.open('images/T turn.png'), (1, 0, 1, 1),
                        [(DIRECTION['top'], DIRECTION['bottom']),
-                        (DIRECTION['left'], DIRECTION['bottom']),
-                        (DIRECTION['bottom'], DIRECTION['left'])])
+                       (DIRECTION['left'], DIRECTION['bottom']),
+                       (DIRECTION['bottom'], DIRECTION['left'])])
 
     tiles.append(empty_tile)
     tiles.append(curve_tile)
