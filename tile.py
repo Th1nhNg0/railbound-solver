@@ -177,10 +177,10 @@ def create_tiles() -> list[Tile]:
 
     tiles.append(rock_tile)
 
-    tiles.append(dead_end)
-    tiles.append(dead_end.rotate(1))
-    tiles.append(dead_end.rotate(2))
-    tiles.append(dead_end.rotate(3))
+    # tiles.append(dead_end)
+    # tiles.append(dead_end.rotate(1))
+    # tiles.append(dead_end.rotate(2))
+    # tiles.append(dead_end.rotate(3))
     # override the index of each tile for easy reference
     index = 0
     for tile in tiles:

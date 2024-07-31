@@ -4,39 +4,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from tile import create_tiles, DIRECTION
 from utils import load_grid
-
-
-class Cart:
-    def __init__(self, x, y, direction, destination, color=(255, 0, 0)):
-        self.x = x
-        self.y = y
-        self.direction = direction
-        self.destination = destination
-        self.crashed = False
-        self.reached_destination = False
-        self.color = color
-        self.img = Image.open('images/Cart.png').convert('RGBA')
-        self.colorize_cart()
-        self.previous_x = x
-        self.previous_y = y
-
-    def move(self, new_x, new_y, new_direction):
-        self.previous_x, self.previous_y = self.x, self.y
-        self.x = new_x
-        self.y = new_y
-        self.direction = new_direction
-        if (self.x, self.y) == self.destination:
-            self.reached_destination = True
-
-    def crash(self):
-        self.crashed = True
-
-    def colorize_cart(self):
-        data = np.array(self.img)
-        red, green, blue, alpha = data.T
-        white_areas = (red > 200) & (blue > 200) & (green > 200)
-        data[..., :-1][white_areas.T] = self.color
-        self.img = Image.fromarray(data)
+from cart import Cart
 
 
 def get_next_position(cart, current_tile, grid_width, grid_height):
