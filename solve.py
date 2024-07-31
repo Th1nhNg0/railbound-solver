@@ -60,11 +60,11 @@ def find_solution(grid, carts, destination):
 
 
 if __name__ == "__main__":
-    grid = np.array([[1, 0, 15, 0, 5],
+    GRID = np.array([[1, 0, 15, 0, 5],
                      [0, 0, 0, 0, 0]])
-    carts = [
+    CARTS = [
         Cart(x=0, y=0, direction=DIRECTION['right']),
     ]
-    destination = (5, 5)
+    DESTINATION = (5, 5)
 
-    find_solution(grid, carts, destination)
+    find_solution(GRID, CARTS, DESTINATION)
