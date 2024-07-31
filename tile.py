@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 import cv2
 import numpy as np
 import itertools
-from utils import DIRECTION
+from utils import DIRECTION,  DIRECTION_TO_STR
 
 
 class Tile:
@@ -24,7 +24,7 @@ class Tile:
             name (str): The name of the tile.
             img (PIL.Image): The input image.
             edges (tuple of 4 ints): (top, right, bottom, left) edges of the tile.  When 2 edge on different tiles have the same value, they can be connected.
-            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile. The direction is defined as 0: top, 1: right, 2: bottom, 3: left based on the tile it self. Example: 0 mean the object is coming from the top of the tile.
+            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile. 
 
         Returns:
             None
@@ -113,11 +113,25 @@ class Tile:
                    ), str(self.edges[3]), fill='black')
         return img
 
-    def __str__(self) -> str:
-        return f'{self.name}(index={self.index},edges={self.edges},flow={self.flow})'
+    def get_output_direction(self, input_direction) -> int:
+        """
+        Get the output direction based on the input direction.
+
+        Args:
+            input_direction (int): The input direction.
+
+        Returns:
+            int: The output direction.
+        """
+        for i, o in self.flow:
+            if i == input_direction:
+                return o
+        return -1
 
     def __repr__(self) -> str:
-        return f'{self.name}(index={self.index},edges={self.edges}),flow={self.flow})'
+        flow = ', '.join(
+            [f'({DIRECTION_TO_STR[i]}, {DIRECTION_TO_STR[o]})' for i, o in self.flow])
+        return f'{self.name}(index={self.index},edges={self.edges}),flow={flow})'
 
 
 def create_tiles() -> list[Tile]:
@@ -136,15 +150,15 @@ def create_tiles() -> list[Tile]:
         'images/Empty.png'), (0, 0, 0, 0), [])
 
     curve_tile = Tile('Curve', Image.open('images/Curve.png'),
-                      (0, 1, 1, 0), [(DIRECTION['right'], DIRECTION['bottom']),
-                                     (DIRECTION['bottom'], DIRECTION['right'])])
+                      (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']),
+                                     (DIRECTION['left'], DIRECTION['bottom'])])
     straight_tile = Tile('Straight', Image.open(
         'images/Straight.png'), (1, 0, 1, 0), [(DIRECTION['top'], DIRECTION['bottom']),
                                                (DIRECTION['bottom'], DIRECTION['top'])])
     t_turn_tile = Tile('T_turn', Image.open('images/T turn.png'), (1, 0, 1, 1),
-                       [(DIRECTION['top'], DIRECTION['bottom']),
-                       (DIRECTION['left'], DIRECTION['bottom']),
-                       (DIRECTION['bottom'], DIRECTION['left'])])
+                       [(DIRECTION['bottom'], DIRECTION['bottom']),
+                       (DIRECTION['right'], DIRECTION['bottom']),
+                       (DIRECTION['top'], DIRECTION['left'])])
     rock_tile = Tile('Rock', Image.open(
         'images/Rock.png'), (0, 0, 0, 0), [])
     dead_end = Tile('Dead end', Image.open(

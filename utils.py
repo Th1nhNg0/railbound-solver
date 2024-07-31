@@ -13,3 +13,21 @@ DIRECTION = {
     'bottom': 2,
     'left': 3
 }
+
+DIRECTION_TO_STR = {
+    0: 'top',
+    1: 'right',
+    2: 'bottom',
+    3: 'left'
+}
+
+
+def flip_direction(direction):
+    if direction == DIRECTION['top']:
+        return DIRECTION['bottom']
+    elif direction == DIRECTION['bottom']:
+        return DIRECTION['top']
+    elif direction == DIRECTION['left']:
+        return DIRECTION['right']
+    elif direction == DIRECTION['right']:
+        return DIRECTION['left']
