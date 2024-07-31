@@ -143,6 +143,8 @@ def create_tiles() -> list[Tile]:
     tiles = []
     empty_tile = Tile('Empty', Image.open(
         'images/Empty.png'), (0, 0, 0, 0), [])
+    rock_tile = Tile('Rock', Image.open(
+        'images/Empty.png'), (0, 0, 0, 0), [])
     curve_tile = Tile('Curve', Image.open('images/Curve.png'),
                       (0, 1, 1, 0), [(DIRECTION['right'], DIRECTION['bottom']),
                                      (DIRECTION['bottom'], DIRECTION['right'])])
@@ -169,7 +171,7 @@ def create_tiles() -> list[Tile]:
     tiles.append(t_turn_tile.flip().rotate(1))
     tiles.append(t_turn_tile.flip().rotate(2))
     tiles.append(t_turn_tile.flip().rotate(3))
-
+    tiles.append(rock_tile)
     # override the index of each tile for easy reference
     index = 0
     for tile in tiles:
