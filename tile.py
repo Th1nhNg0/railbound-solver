@@ -6,16 +6,7 @@ from PIL import Image, ImageDraw
 import cv2
 import numpy as np
 import itertools
-
-
-# define direction: 0: top, 1: right, 2: bottom, 3: left
-
-DIRECTION = {
-    'top': 0,
-    'right': 1,
-    'bottom': 2,
-    'left': 3
-}
+from utils import DIRECTION
 
 
 class Tile:
