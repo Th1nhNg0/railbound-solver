@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from cart_simulation import simulate_cart_movement, create_tiles, DIRECTION, Cart
+import os
 
 
 def create_gif(frames, output_filename, duration=500):
@@ -31,12 +32,11 @@ def main():
         [9, 10, 6, 10, 2, 13, 11, 13, 14, 6],
         [8, 7, 1, 3, 4, 8, 11, 5, 5, 0]
     ]
-
+    grid = [[6, 6, 6, 6, 6],
+            ]
     # Create multiple carts with different starting positions and colors
     carts = [
-        Cart(2, 0, DIRECTION['top'], color=(255, 0, 0)),  # Red cart
-        Cart(0, 2, DIRECTION['right'], color=(0, 255, 0)),  # Green cart
-        Cart(6, 6, DIRECTION['top'], color=(0, 0, 255))  # Blue cart
+        Cart(0, 0, DIRECTION['left'], color=(255, 0, 0), destination=(4, 0)),
     ]
 
     frames = simulate_cart_movement(grid, tiles, carts, max_iterations=20)

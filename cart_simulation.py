@@ -3,22 +3,30 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from tile import create_tiles, DIRECTION
+from utils import load_grid
 
 
 class Cart:
-    def __init__(self, x, y, direction, color=(255, 0, 0)):
+    def __init__(self, x, y, direction, destination, color=(255, 0, 0)):
         self.x = x
         self.y = y
         self.direction = direction
+        self.destination = destination
         self.crashed = False
+        self.reached_destination = False
         self.color = color
         self.img = Image.open('images/Cart.png').convert('RGBA')
         self.colorize_cart()
+        self.previous_x = x
+        self.previous_y = y
 
     def move(self, new_x, new_y, new_direction):
+        self.previous_x, self.previous_y = self.x, self.y
         self.x = new_x
         self.y = new_y
         self.direction = new_direction
+        if (self.x, self.y) == self.destination:
+            self.reached_destination = True
 
     def crash(self):
         self.crashed = True
@@ -26,7 +34,7 @@ class Cart:
     def colorize_cart(self):
         data = np.array(self.img)
         red, green, blue, alpha = data.T
-        white_areas = (red == 255) & (blue == 255) & (green == 255)
+        white_areas = (red > 200) & (blue > 200) & (green > 200)
         data[..., :-1][white_areas.T] = self.color
         self.img = Image.fromarray(data)
 
@@ -50,11 +58,12 @@ def is_valid_position(x, y, grid_width, grid_height):
 
 
 def draw_grid(grid, tiles, carts):
-    n = len(grid)
-    img = Image.new('RGB', (n * 100, n * 100), color='white')
+    grid_height = len(grid)
+    grid_width = len(grid[0])
+    img = Image.new('RGB', (grid_width * 100, grid_height * 100), 'white')
     draw = ImageDraw.Draw(img)
-    for x in range(n):
-        for y in range(n):
+    for x in range(grid_height):
+        for y in range(grid_width):
             tile_index = grid[x][y]
             tile = tiles[tile_index]
             img.paste(
@@ -74,11 +83,39 @@ def draw_grid(grid, tiles, carts):
             cart_img = cart_img.convert('RGBA')
         img.paste(cart_img, (cart.x * 100 + 37, cart.y * 100 + 45), cart_img)
 
-    for i in range(n):
-        draw.line((0, i * 100, n * 100, i * 100), fill='black')
-        draw.line((i * 100, 0, i * 100, n * 100), fill='black')
+        # Draw destination
+        dest_x, dest_y = cart.destination
+        draw.rectangle([dest_x * 100 + 25, dest_y * 100 + 25,
+                        dest_x * 100 + 75, dest_y * 100 + 75],
+                       outline=cart.color, width=3)
+
+    # draw line
+    for i in range(grid_height):
+        draw.line((0, i * 100, grid_width * 100, i * 100), fill='black')
+    for i in range(grid_width):
+        draw.line((i * 100, 0, i * 100, grid_height * 100), fill='black')
 
     return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
+
+def check_collision(carts):
+    active_carts = [
+        cart for cart in carts if not cart.crashed and not cart.reached_destination]
+
+    # Check for head-on collisions
+    for i in range(len(active_carts)):
+        for j in range(i + 1, len(active_carts)):
+            cart1, cart2 = active_carts[i], active_carts[j]
+            if (cart1.x == cart2.previous_x and cart1.y == cart2.previous_y and
+                    cart2.x == cart1.previous_x and cart2.y == cart1.previous_y):
+                return True
+
+    # Check for same position collisions
+    positions = [(cart.x, cart.y) for cart in active_carts]
+    if len(positions) != len(set(positions)):
+        return True
+
+    return False
 
 
 def simulate_cart_movement(grid, tiles, carts, max_iterations=100):
@@ -89,12 +126,13 @@ def simulate_cart_movement(grid, tiles, carts, max_iterations=100):
 
     start_time = time.time()
 
-    while iteration < max_iterations and any(not cart.crashed for cart in carts):
+    while iteration < max_iterations:
         img = draw_grid(grid, tiles, carts)
         frames.append(img)
 
+        # Move carts
         for cart in carts:
-            if not cart.crashed:
+            if not cart.crashed and not cart.reached_destination:
                 current_tile = tiles[grid[cart.y][cart.x]]
                 next_position = get_next_position(
                     cart, current_tile, grid_width, grid_height)
@@ -102,6 +140,16 @@ def simulate_cart_movement(grid, tiles, carts, max_iterations=100):
                     cart.crash()
                 else:
                     cart.move(*next_position)
+
+        # Check for collisions after all carts have moved
+        if check_collision(carts):
+            for cart in carts:
+                if not cart.reached_destination:
+                    cart.crash()
+            break
+
+        if all(cart.reached_destination or cart.crashed for cart in carts):
+            break
 
         iteration += 1
 
@@ -117,28 +165,16 @@ def simulate_cart_movement(grid, tiles, carts, max_iterations=100):
 
 
 def main():
-    grid = [
-        [1, 8, 7, 9, 3, 5, 9, 11, 13, 6],
-        [3, 1, 11, 9, 10, 11, 9, 3, 4, 10],
-        [1, 12, 7, 4, 7, 9, 11, 0, 1, 3],
-        [4, 2, 9, 14, 11, 4, 8, 6, 12, 6],
-        [0, 5, 9, 11, 5, 0, 0, 0, 1, 14],
-        [14, 7, 13, 7, 9, 10, 2, 1, 8, 7],
-        [7, 5, 9, 8, 7, 5, 5, 13, 2, 13],
-        [9, 8, 12, 6, 3, 9, 11, 13, 8, 12],
-        [9, 10, 6, 10, 2, 13, 11, 13, 14, 6],
-        [8, 7, 1, 3, 4, 8, 11, 5, 5, 0]
-    ]
-
+    grid, destination = load_grid('level/1-3.json')
     tiles = create_tiles()
 
-    # Create multiple carts with different starting positions and colors
+    # Create multiple carts with different starting positions, colors, and destinations
     carts = [
-        Cart(2, 0, DIRECTION['top'], color=(255, 0, 0)),  # Red cart
-        Cart(0, 2, DIRECTION['right'], color=(0, 255, 0)),  # Green cart
-        Cart(9, 9, DIRECTION['left'], color=(0, 0, 255))  # Blue cart
+        Cart(0, 4, DIRECTION['bottom'],
+             destination=destination, color=(255, 0, 0)),
+        Cart(0, 3, DIRECTION['bottom'],
+             destination=destination, color=(255, 0, 0)),
     ]
-
     frames = simulate_cart_movement(grid, tiles, carts, max_iterations=200)
 
     # Display the simulation
