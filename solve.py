@@ -1,7 +1,7 @@
 import copy
-from tile import create_tiles, DIRECTION
-from cart import Cart
 import numpy as np
+
+from tile import create_tiles, DIRECTION
 
 tiles = create_tiles()
 
