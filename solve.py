@@ -24,12 +24,14 @@ class Cell:
 
 
 def convert_grid(grid, tiles):
+    tiles_cp = copy.deepcopy(tiles)
+    tiles_cp = [tile for tile in tiles_cp if tile.index != 15]
     new_grid = []
     for row in grid:
         new_row = []
         for cell in row:
             if cell == 0:
-                new_row.append(Cell(copy.deepcopy(tiles[1:])))
+                new_row.append(Cell(copy.deepcopy(tiles_cp)))
             else:
                 cell = Cell([tile for tile in tiles if tile.index == cell])
                 cell.collapse()
@@ -150,7 +152,7 @@ def plot_grid(grid, delay=100):
 
 if __name__ == "__main__":
     tiles = create_tiles()
-    grid, _ = load_grid('level/1-10.json')
+    grid, _ = load_grid('level/1-12.json')
     # add a padding of 0s around the grid
     # print grid
     for row in grid:
@@ -161,14 +163,5 @@ if __name__ == "__main__":
         print(row)
     grid = convert_grid(grid, tiles)
     collapsed_grid = wave_function_collapse(grid)
-
-    for row in collapsed_grid:
-        for cell in row:
-            if cell.is_collapsed():
-                print(cell.collapsed_tile.index, end=" ")
-            else:
-                print("X", end=" ")
-        print()
-
     plot_grid(collapsed_grid, 0)
     cv2.destroyAllWindows()
