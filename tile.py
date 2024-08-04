@@ -153,8 +153,8 @@ def create_tiles() -> list[Tile]:
                       (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']),
                                      (DIRECTION['left'], DIRECTION['bottom'])])
     straight_tile = Tile('Straight', Image.open(
-        'images/Straight.png'), (1, 0, 1, 0), [(DIRECTION['top'], DIRECTION['bottom']),
-                                               (DIRECTION['bottom'], DIRECTION['top'])])
+        'images/Straight.png'), (1, 0, 1, 0), [(DIRECTION['top'], DIRECTION['top']),
+                                               (DIRECTION['bottom'], DIRECTION['bottom'])])
     t_turn_tile = Tile('T_turn', Image.open('images/T turn.png'), (1, 0, 1, 1),
                        [(DIRECTION['bottom'], DIRECTION['bottom']),
                        (DIRECTION['right'], DIRECTION['bottom']),
