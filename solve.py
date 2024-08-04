@@ -252,7 +252,7 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
     while stack:
         grid, carts = stack.pop()
         carts = copy.deepcopy(carts)
-        grid.preview_image(carts, 1)
+        grid.preview_image(carts, 50)
         pos_to_place_tile = []
         should_skip = False
 
@@ -308,15 +308,15 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
 
 
 if __name__ == "__main__":
-    MAX_PLACEMENT = 6
+    MAX_PLACEMENT = 8
     GRID_DATA = np.array([[5, 0, 0],
                           [0, 0, 0],
-                          [0, 0, 5],
+                          [15, 0, 15],
                           [0, 0, 0],
-                          [5, 0, 0]])
+                          [0, 15, 15],
+                          [0, 0, 6]])
     CARTS = [
-        Cart(x=0, y=4, direction=DIRECTION['top'], order=1),
-        Cart(x=2, y=2, direction=DIRECTION['top'], order=2),
+        Cart(x=2, y=5, direction=DIRECTION['left'], order=1),
     ]
     DESTINATION = (0, 0)
     GRID = Grid(GRID_DATA, MAX_PLACEMENT)
