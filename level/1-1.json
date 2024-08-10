@@ -1,0 +1,5 @@
+{
+  "grid": [[5], [0], [0], [0], [5]],
+  "destination": [0, 0],
+  "carts": [{ "x": 0, "y": 4, "direction": 0, "order": 1 }]
+}

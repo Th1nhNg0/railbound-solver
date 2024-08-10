@@ -364,7 +364,7 @@ class TileGridUI:
                 "carts": [{"x": cart.x, "y": cart.y, "direction": cart.direction, "order": cart.order} for cart in self.carts]
             }
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f)
+                json.dump(data, f, indent=4)
             messagebox.showinfo("Save Successful",
                                 "Grid, destination, and carts saved successfully!")
 

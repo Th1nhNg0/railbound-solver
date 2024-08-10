@@ -1,8 +1,13 @@
+import pprint
+import json
+import argparse
 import copy
+
 import cv2
 import numpy as np
 import PIL
-from tile import create_tiles, Tile
+
+from tile import Tile, create_tiles
 from utils import DIRECTION, DIRECTION_TO_STR, flip_direction
 
 tiles = create_tiles()
@@ -273,11 +278,14 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
 
     stack: list[tuple[Grid, list[Cart]]] = []
     stack.append((i_grid, i_carts))
-
+    count = 0
+    total = 1
     while stack:
+        count += 1
+        if count % 1000 == 0:
+            print(f"Step {count}/{total}")
         grid, carts = stack.pop()
         carts = copy.deepcopy(carts)
-        # grid.preview_image(carts, 50)
         pos_to_place_tile = []
         should_skip = False
 
@@ -315,11 +323,13 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
 
             if all(cart.reached_destination for cart in carts):
                 should_skip = True
+                print("Solution found")
                 if grid.check_valid_grid():
-                    print("Solution found")
-                    print("Grid:")
-                    print(grid)
-                    grid.preview_image(i_carts)
+                    print("The solution is valid")
+                else:
+                    print("The solution may not be valid")
+                pprint.pprint(grid.grid)
+                grid.preview_image(i_carts)
                 break
 
         if should_skip:
@@ -330,20 +340,38 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
             for cart in new_carts:
                 tile = new_grid.get_tile(cart.x, cart.y)
                 cart.update_direction(tile)
-            stack.insert(0, (new_grid, new_carts))
+            stack.append((new_grid, new_carts))
+            total += 1
+
+
+def load_grid(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # Validate the loaded data
+    if not all(key in data for key in ['grid', 'destination', 'carts']):
+        raise KeyError("The loaded JSON is missing required keys.")
+
+    # Convert destination back to tuple if it exists
+    if data["destination"]:
+        data["destination"] = tuple(data["destination"])
+
+    # Convert carts to Cart objects
+    data["carts"] = [Cart(cart["x"], cart["y"], cart["direction"], cart["order"])
+                     for cart in data["carts"]]
+
+    return data
 
 
 if __name__ == "__main__":
-    MAX_PLACEMENT = 20
-    GRID_DATA = np.array([[0, 0, 5, 0, 0],
-                          [0, 1, 0, 2, 0],
-                          [0, 0, 0, 0, 0],
-                          [0, 4, 6, 3, 0],
-                          [5, 0, 0, 0, 5]])
-    CARTS = [
-        Cart(x=1, y=3, direction=DIRECTION['top'], order=1),
-    ]
-    DESTINATION = (2, 0)
-    GRID = Grid(GRID_DATA, MAX_PLACEMENT)
+    MAX_PLACEMENT = 100
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="input file path")
+    args = parser.parse_args()
+    data = load_grid(args.input)
+    GRID = Grid(data["grid"], MAX_PLACEMENT)
+    CARTS = data["carts"]
+    DESTINATION = data["destination"]
     GRID.preview_image(CARTS)
+    cv2.destroyAllWindows()
     find_solution(GRID, CARTS, DESTINATION)
