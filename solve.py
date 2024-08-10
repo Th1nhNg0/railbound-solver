@@ -112,12 +112,6 @@ class Grid:
         """
         self.grid[y][x] = tile_index
 
-    def __repr__(self):
-        return "Grid(\n{}\n)".format(self.grid)
-
-    def __str__(self):
-        return self.__repr__()
-
     def get_image(self, carts: list[Cart] = None):
         """
         Generates an image representation of the railbound puzzle board.
@@ -243,6 +237,37 @@ class Grid:
             else:
                 yield new_grid
 
+    def check_valid_grid(self):
+        # check if the grid is valid: all tiles are connected
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.get_tile(x, y)
+                if tile.name != 'T_turn' and tile.name != 'Curve':
+                    continue
+                if y > 0:
+                    top_tile = self.get_tile(x, y-1)
+                    if top_tile.edges[2] != tile.edges[0]:
+                        return False
+                if y < self.height - 1:
+                    bottom_tile = self.get_tile(x, y+1)
+                    if bottom_tile.edges[0] != tile.edges[2]:
+                        return False
+                if x > 0:
+                    left_tile = self.get_tile(x-1, y)
+                    if left_tile.edges[1] != tile.edges[3]:
+                        return False
+                if x < self.width - 1:
+                    right_tile = self.get_tile(x+1, y)
+                    if right_tile.edges[3] != tile.edges[1]:
+                        return False
+        return True
+
+    def __repr__(self):
+        return "Grid(\n{}\n)".format(self.grid)
+
+    def __str__(self):
+        return self.__repr__()
+
 
 def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int]):
 
@@ -252,11 +277,11 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
     while stack:
         grid, carts = stack.pop()
         carts = copy.deepcopy(carts)
-        grid.preview_image(carts, 50)
+        # grid.preview_image(carts, 50)
         pos_to_place_tile = []
         should_skip = False
 
-        max_steps = 10
+        max_steps = 10  # max steps to simulate the carts movement to avoid infinite loop
         while len(pos_to_place_tile) == 0 and max_steps > 0:
             max_steps -= 1
             for cart in (carts):
@@ -290,10 +315,11 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
 
             if all(cart.reached_destination for cart in carts):
                 should_skip = True
-                print("Solution found")
-                print("Grid:")
-                print(grid)
-                grid.preview_image(i_carts)
+                if grid.check_valid_grid():
+                    print("Solution found")
+                    print("Grid:")
+                    print(grid)
+                    grid.preview_image(i_carts)
                 break
 
         if should_skip:
@@ -308,17 +334,16 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
 
 
 if __name__ == "__main__":
-    MAX_PLACEMENT = 8
-    GRID_DATA = np.array([[5, 0, 0],
-                          [0, 0, 0],
-                          [15, 0, 15],
-                          [0, 0, 0],
-                          [0, 15, 15],
-                          [0, 0, 6]])
+    MAX_PLACEMENT = 20
+    GRID_DATA = np.array([[0, 0, 5, 0, 0],
+                          [0, 1, 0, 2, 0],
+                          [0, 0, 0, 0, 0],
+                          [0, 4, 6, 3, 0],
+                          [5, 0, 0, 0, 5]])
     CARTS = [
-        Cart(x=2, y=5, direction=DIRECTION['left'], order=1),
+        Cart(x=1, y=3, direction=DIRECTION['top'], order=1),
     ]
-    DESTINATION = (0, 0)
+    DESTINATION = (2, 0)
     GRID = Grid(GRID_DATA, MAX_PLACEMENT)
     GRID.preview_image(CARTS)
     find_solution(GRID, CARTS, DESTINATION)
