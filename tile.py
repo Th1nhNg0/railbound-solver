@@ -198,6 +198,7 @@ def create_tiles() -> list[Tile]:
 if __name__ == '__main__':
     # preview the tiles
     tiles = create_tiles()
+    print(len(tiles))
     for tile in tiles:
         print(tile)
         # show the image in a window, scale the image 4 times

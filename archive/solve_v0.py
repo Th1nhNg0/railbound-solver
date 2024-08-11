@@ -204,7 +204,7 @@ class Grid:
             return
         x, y = pos_to_place_tile[0]
         for tile in tiles:
-            if tile.name == 'Empty' or tile.name == 'Rock' or tile.name == 'T_turn':
+            if tile.name == 'Empty' or tile.name == 'Rock':
                 continue
             # check top edge
             if y > 0:
@@ -355,9 +355,6 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
                     if all(cart.reached_destination for cart in new_carts):
                         should_skip = True
                         if grid.check_valid_grid():
-                            print("Solution found")
-                            print("Total iterations:", count)
-                            print("Total grids checked:", total)
                             return grid
                         break
             if should_skip:
