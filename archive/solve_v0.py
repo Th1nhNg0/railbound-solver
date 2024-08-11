@@ -15,6 +15,9 @@ tiles = create_tiles()
 
 
 class Cart:
+    __slots__ = ('x', 'y', 'previous_x', 'previous_y',
+                 'direction', 'reached_destination', 'order')
+
     def __init__(self, x: int, y: int, direction: int, order: int, reached_destination=False):
         self.x = x
         self.y = y
@@ -90,6 +93,8 @@ class Cart:
 
 
 class Grid:
+    __slots__ = ('grid', 'height', 'width', 'max_placement', 'placed_tiles')
+
     def __init__(self, grid, max_placement: int, placed_tiles=0):
         self.grid = grid
         self.height = len(grid)
@@ -200,7 +205,7 @@ class Grid:
             None: If there are no positions to place tiles.
 
         """
-        if not pos_to_place_tile:
+        if not pos_to_place_tile or self.placed_tiles >= self.max_placement:
             return
         x, y = pos_to_place_tile[0]
         for tile in tiles:
@@ -243,8 +248,6 @@ class Grid:
             new_grid[y][x] = tile.index
             new_grid = Grid(new_grid, self.max_placement, self.placed_tiles)
             new_grid.placed_tiles = self.placed_tiles + 1
-            if new_grid.placed_tiles > self.max_placement:
-                return
 
             if len(pos_to_place_tile) > 1:
                 yield from new_grid.get_possible_grid(pos_to_place_tile[1:])
@@ -297,16 +300,13 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
             count += 1
 
             grid, carts, history = queue.popleft()
-            if count % 1000 == 0:
-                print("Iteration: {}, Total: {}, Queue: {}".format(
-                    count, total, len(queue)), end='\r')
-                if count % 10000 == 0:
-                    grid.preview_image(carts, 1)
+            print("Iteration: {}, Total: {}, Queue: {}".format(
+                count, total, len(queue)), end='\r')
             new_carts = [cart.copy() for cart in carts]
             pos_to_place_tile = []
             should_skip = False
 
-            max_steps = 10  # max steps to simulate the carts movement to avoid infinite loop
+            max_steps = 50  # max steps to simulate the carts movement to avoid infinite loop
             with timer.measure_time("Simulation"):
                 while len(pos_to_place_tile) == 0 and max_steps > 0 and not should_skip:
                     max_steps -= 1
@@ -355,6 +355,10 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
                     if all(cart.reached_destination for cart in new_carts):
                         should_skip = True
                         if grid.check_valid_grid():
+                            print()
+                            print("Solution found")
+                            print("Total iterations:", count)
+                            print("Total grids checked:", total)
                             return grid
                         break
             if should_skip:
@@ -370,6 +374,7 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
                     total += 1
                     queue.append(
                         (new_grid, new_carts_copy, history))
+    print()
     print("No solution found")
     print("Total iterations:", count)
     print("Total grids checked:", total)
@@ -395,7 +400,7 @@ def load_grid(file_path):
 
 
 def main(input_file):
-    MAX_PLACEMENT = 100
+    MAX_PLACEMENT = 1000
     data = load_grid(input_file)
     GRID = Grid(data["grid"], MAX_PLACEMENT)
     CARTS = data["carts"]

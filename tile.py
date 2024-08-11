@@ -13,7 +13,7 @@ class Tile:
     """
     A class to represent a tile in the game.
     """
-
+    __slots__ = ('name', 'img', 'edges', 'index', 'flow')
     index_counter = itertools.count()
 
     def __init__(self, name, img, edges, flow):
