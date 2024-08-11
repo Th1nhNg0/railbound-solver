@@ -373,7 +373,7 @@ def load_grid(file_path):
     return data
 
 
-def main(input_file, show_preview=False):
+def main(input_file, show_preview=True):
     timer.reset()
 
     MAX_PLACEMENT = 1000
