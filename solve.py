@@ -254,31 +254,6 @@ class Grid:
             else:
                 yield new_grid
 
-    def check_valid_grid(self):
-        # check if the grid is valid: all tiles are connected
-        for y in range(self.height):
-            for x in range(self.width):
-                tile = self.get_tile(x, y)
-                if tile.name != 'T_turn' and tile.name != 'Curve':
-                    continue
-                if y > 0:
-                    top_tile = self.get_tile(x, y-1)
-                    if top_tile.edges[2] != tile.edges[0]:
-                        return False
-                if y < self.height - 1:
-                    bottom_tile = self.get_tile(x, y+1)
-                    if bottom_tile.edges[0] != tile.edges[2]:
-                        return False
-                if x > 0:
-                    left_tile = self.get_tile(x-1, y)
-                    if left_tile.edges[1] != tile.edges[3]:
-                        return False
-                if x < self.width - 1:
-                    right_tile = self.get_tile(x+1, y)
-                    if right_tile.edges[3] != tile.edges[1]:
-                        return False
-        return True
-
     def __repr__(self):
         return "Grid({})".format(self.grid)
 
@@ -354,13 +329,12 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
                                 break
                     if all(cart.reached_destination for cart in new_carts):
                         should_skip = True
-                        if grid.check_valid_grid():
-                            print()
-                            print("Solution found")
-                            print("Total iterations:", count)
-                            print("Total grids checked:", total)
-                            return grid
-                        break
+                        print()
+                        print("Solution found")
+                        print("Total iterations:", count)
+                        print("Total grids to check:", total)
+                        # replace with break to find multiple solutions
+                        return grid
             if should_skip:
                 continue
             with timer.measure_time("Grid generation"):
@@ -377,7 +351,7 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
     print()
     print("No solution found")
     print("Total iterations:", count)
-    print("Total grids checked:", total)
+    print("Total grids to check:", total)
 
 
 def load_grid(file_path):
@@ -399,22 +373,29 @@ def load_grid(file_path):
     return data
 
 
-def main(input_file):
+def main(input_file, show_preview=False):
+    timer.reset()
+
     MAX_PLACEMENT = 1000
     data = load_grid(input_file)
     GRID = Grid(data["grid"], MAX_PLACEMENT)
     CARTS = data["carts"]
     DESTINATION = data["destination"]
-    GRID.preview_image(CARTS)
+    if show_preview:
+        GRID.preview_image(CARTS)
     grid = find_solution(GRID, CARTS, DESTINATION)
     timer.print_averages()
     if grid:
-        print(grid.placed_tiles)
-        grid.preview_image(CARTS)
+        if show_preview:
+            grid.preview_image(CARTS)
+    return grid is not None
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="input file path")
+    parser.add_argument("-p", "--show-preview", action="store_true",
+                        help="show preview of the grid")
+
     args = parser.parse_args()
-    main(args.input)
+    main(args.input, args.show_preview)

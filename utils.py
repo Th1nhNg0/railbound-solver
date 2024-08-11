@@ -47,6 +47,9 @@ class TimingManager:
     def disable(self):
         self.enabled = False
 
+    def reset(self):
+        self.execution_times = defaultdict(list)
+
 
 def load_grid(file_path):
     with open(file_path, 'r') as f:
