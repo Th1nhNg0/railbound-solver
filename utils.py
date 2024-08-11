@@ -6,12 +6,17 @@ from statistics import mean
 
 
 class TimingManager:
-    def __init__(self):
+    def __init__(self, enabled=True):
         self.execution_times = defaultdict(list)
         self.current_operations = []
+        self.enabled = enabled
 
     @contextmanager
     def measure_time(self, operation_name):
+        if not self.enabled:
+            yield
+            return
+
         full_operation_name = "/".join(self.current_operations +
                                        [operation_name])
         self.current_operations.append(operation_name)
@@ -19,18 +24,28 @@ class TimingManager:
         try:
             yield
         finally:
-            end_time = time.perf_counter()
-            self.execution_times[full_operation_name].append(
-                end_time - start_time)
-            self.current_operations.pop()
+            if self.enabled:
+                end_time = time.perf_counter()
+                self.execution_times[full_operation_name].append(
+                    end_time - start_time)
+                self.current_operations.pop()
 
     def print_averages(self):
-        print("Average execution times:")
+        if not self.enabled:
+            print("Timing is disabled.")
+            return
         for operation, times in sorted(self.execution_times.items()):
             avg_time = mean(times)
+            total_time = sum(times)
             indent = "  " * (operation.count("/"))
-            print(f"{indent}{operation.split('/')
-                  [-1]}: {avg_time:.6f} seconds")
+            print(f"{indent}{operation.split(
+                '/')[-1]}: {avg_time:.6f} seconds (total: {total_time:.6f} seconds)")
+
+    def enable(self):
+        self.enabled = True
+
+    def disable(self):
+        self.enabled = False
 
 
 def load_grid(file_path):
