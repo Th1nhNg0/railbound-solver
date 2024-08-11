@@ -1,7 +1,4 @@
-import heapq
-from typing import Any
-from dataclasses import dataclass, field
-import pprint
+import time
 import json
 import argparse
 import copy
@@ -11,9 +8,7 @@ import numpy as np
 import PIL
 from collections import deque
 from tile import Tile, create_tiles
-from utils import DIRECTION, DIRECTION_TO_STR, flip_direction
-import pickle
-from tqdm import tqdm
+from utils import DIRECTION, DIRECTION_TO_STR
 
 tiles = create_tiles()
 
@@ -283,27 +278,17 @@ class Grid:
         return self.__repr__()
 
 
-@dataclass(order=True)
-class PrioritizedItem:
-    priority: int
-    item: Any = field(compare=False)
-
-
 def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int]):
-    priority_queue = []
-    heapq.heappush(priority_queue, PrioritizedItem(
-        i_grid.placed_tiles, (i_grid, i_carts, [(i_grid, i_carts)])))
+    queue = deque()
+    queue.append((i_grid, i_carts, []))
     count = 0
     total = 1
 
-    while priority_queue:
+    while queue:
         count += 1
-        if count % 1000 == 0:
-            print(f"Iteration: {count}, Total: {total}, Queue: {
-                  len(priority_queue)}", end='\r')
-
-        current_item = heapq.heappop(priority_queue)
-        grid, carts, history = current_item.item
+        print(f"Iteration: {count}, Total: {total}, Queue: {
+            len(queue)}", end='\r')
+        grid, carts, history = queue.pop()
         new_carts = copy.deepcopy(carts)
         pos_to_place_tile = []
         should_skip = False
@@ -350,7 +335,8 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
                     if Cart.check_collision(cart.x, cart.y, other_cart.x, other_cart.y):
                         cart.crashed = True
                         other_cart.crashed = True
-                    if Cart.check_collision(cart.x, cart.y, other_cart.previous_x, other_cart.previous_y):
+                    if Cart.check_collision(cart.x, cart.y, other_cart.previous_x, other_cart.previous_y)\
+                            and Cart.check_collision(cart.previous_x, cart.previous_y, other_cart.x, other_cart.y):
                         cart.crashed = True
                         other_cart.crashed = True
 
@@ -361,12 +347,13 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
             if all(cart.reached_destination for cart in new_carts):
                 should_skip = True
                 if grid.check_valid_grid():
-                    # print("Solution found")
+                    print("Solution found")
                     # pprint.pprint(grid.grid)
                     # print()
                     # with open('solution.pkl', 'wb') as f:
                     #     pickle.dump(history, f)
-                    grid.preview_image(i_carts)
+                    # grid.preview_image(i_carts)
+                    return
                 break
 
         if should_skip:
@@ -379,13 +366,12 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
                 if (cart.x, cart.y) in pos_to_place_tile:
                     tile = new_grid.get_tile(cart.x, cart.y)
                     cart.update_direction(tile)
-
-            # with history
-            # stack.append(
-            #     (new_grid, new_carts_copy, history + [(new_grid, new_carts_copy)]))
-            heapq.heappush(priority_queue, PrioritizedItem(
-                new_grid.placed_tiles, (new_grid, new_carts_copy, history)))
             total += 1
+            queue.append(
+                (new_grid, new_carts_copy, history + [new_grid.grid]))
+    print("No solution found")
+    print("Total iterations:", count)
+    print("Total grids checked:", total)
 
 
 def load_grid(file_path):
@@ -418,4 +404,6 @@ if __name__ == "__main__":
     DESTINATION = data["destination"]
     GRID.preview_image(CARTS)
     cv2.destroyAllWindows()
+    start = time.time()
     find_solution(GRID, CARTS, DESTINATION)
+    print("Time taken:", time.time() - start)
