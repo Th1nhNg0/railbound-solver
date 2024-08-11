@@ -1,3 +1,4 @@
+import random
 import argparse
 import json
 from collections import deque
@@ -294,14 +295,18 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
     while queue:
         with timer.measure_time("Iteration"):
             count += 1
-            print("Iteration: {}, Total: {}, Queue: {}".format(
-                count, total, len(queue)), end='\r')
-            grid, carts, history = queue.popleft()
+
+            grid, carts, history = queue.pop()
+            if count % 100 == 0:
+                print("Iteration: {}, Total: {}, Queue: {}".format(
+                    count, total, len(queue)), end='\r')
+                if count % 1000 == 0:
+                    grid.preview_image(carts, 1)
             new_carts = [cart.copy() for cart in carts]
             pos_to_place_tile = []
             should_skip = False
 
-            max_steps = 100  # max steps to simulate the carts movement to avoid infinite loop
+            max_steps = 10  # max steps to simulate the carts movement to avoid infinite loop
             with timer.measure_time("Simulation"):
                 while len(pos_to_place_tile) == 0 and max_steps > 0 and not should_skip:
                     max_steps -= 1
@@ -390,7 +395,7 @@ def load_grid(file_path):
 
 
 def main(input_file):
-    MAX_PLACEMENT = 1000
+    MAX_PLACEMENT = 100
     data = load_grid(input_file)
     GRID = Grid(data["grid"], MAX_PLACEMENT)
     CARTS = data["carts"]
