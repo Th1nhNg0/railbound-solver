@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 import cv2
 import numpy as np
 import itertools
-from utils import DIRECTION,  DIRECTION_TO_STR
+from utils import DIRECTION,  DIRECTION_TO_STR, OPPOSITE_DIRECTION
 
 
 class Tile:
@@ -127,6 +127,34 @@ class Tile:
             if i == input_direction:
                 return o
         return -1
+
+    @staticmethod
+    def check_connection(tile1, tile2, direction):
+        """
+        Check if two tiles can be connected.
+        The tile1 is the original, tile2 is the target tile.
+        Direction is the direction of tile2 relative to tile1.
+
+        Args:
+            tile1 (Tile): The original tile
+            tile2 (Tile): The target tile
+            direction (int): The direction of tile2 relative to tile1 (use DIRECTION constants)
+
+        Returns:
+            bool: True if the tiles can be connected, False otherwise
+
+        Example:
+        tile1 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']), (DIRECTION['left'], DIRECTION['bottom'])])
+        tile2 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']), (DIRECTION['left'], DIRECTION['bottom'])])
+        Tile.check_connection(tile1, tile2, DIRECTION['right'])
+        Means: check if the right edge of tile1 can be connected to the left edge of tile2.
+        """
+        # Get the edge indices for the connecting sides
+        tile1_edge_index = direction
+        tile2_edge_index = OPPOSITE_DIRECTION[direction]
+
+        # Check if the edges match
+        return tile1.edges[tile1_edge_index] == tile2.edges[tile2_edge_index]
 
     def __repr__(self) -> str:
         flow = ', '.join(

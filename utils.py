@@ -71,13 +71,17 @@ DIRECTION_TO_STR = {
     3: 'left'
 }
 
+DIRECTION_DELTA = {
+    0: (0, -1),
+    1: (1, 0),
+    2: (0, 1),
+    3: (-1, 0)
+}
 
-def flip_direction(direction):
-    if direction == DIRECTION['top']:
-        return DIRECTION['bottom']
-    elif direction == DIRECTION['bottom']:
-        return DIRECTION['top']
-    elif direction == DIRECTION['left']:
-        return DIRECTION['right']
-    elif direction == DIRECTION['right']:
-        return DIRECTION['left']
+
+OPPOSITE_DIRECTION = {
+    DIRECTION['top']: DIRECTION['bottom'],
+    DIRECTION['right']: DIRECTION['left'],
+    DIRECTION['bottom']: DIRECTION['top'],
+    DIRECTION['left']: DIRECTION['right']
+}

@@ -399,23 +399,29 @@ def load_grid(file_path):
     return data
 
 
-def main(input_file):
+def main(input_file, show_preview=True):
+    timer.reset()
+
     MAX_PLACEMENT = 1000
     data = load_grid(input_file)
     GRID = Grid(data["grid"], MAX_PLACEMENT)
     CARTS = data["carts"]
     DESTINATION = data["destination"]
-    # GRID.preview_image(CARTS)
-    # cv2.destroyAllWindows()
+    if show_preview:
+        GRID.preview_image(CARTS)
     grid = find_solution(GRID, CARTS, DESTINATION)
     timer.print_averages()
     if grid:
-        print(grid.placed_tiles)
-        grid.preview_image(CARTS)
+        if show_preview:
+            grid.preview_image(CARTS)
+    return grid is not None
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="input file path")
+    parser.add_argument("-p", "--show-preview", action="store_true",
+                        help="show preview of the grid")
+
     args = parser.parse_args()
-    main(args.input)
+    main(args.input, args.show_preview)
