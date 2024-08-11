@@ -296,11 +296,11 @@ def find_solution(i_grid: Grid, i_carts: list[Cart], destination: tuple[int, int
         with timer.measure_time("Iteration"):
             count += 1
 
-            grid, carts, history = queue.pop()
-            if count % 100 == 0:
+            grid, carts, history = queue.popleft()
+            if count % 1000 == 0:
                 print("Iteration: {}, Total: {}, Queue: {}".format(
                     count, total, len(queue)), end='\r')
-                if count % 1000 == 0:
+                if count % 10000 == 0:
                     grid.preview_image(carts, 1)
             new_carts = [cart.copy() for cart in carts]
             pos_to_place_tile = []
