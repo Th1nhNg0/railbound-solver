@@ -301,28 +301,25 @@ class Grid:
             nx, ny = x + DIRECTION_DELTA[output_direction][0], y + \
                 DIRECTION_DELTA[output_direction][1]
 
-            t_turn_to_place = None
+            t_turn_to_places = [None]
             if 0 <= nx < self.width and 0 <= ny < self.height:
                 n_tile = self.get_tile(nx, ny)
                 if not Tile.check_connection(tile, n_tile, output_direction) and n_tile.name != 'Empty':
                     if self.can_change_tiled[(nx, ny)]:
                         if n_tile.name == 'Curve':
-                            t_turn_to_place = curve_to_t_turn(
-                                n_tile, OPPOSITE_DIRECTION[output_direction], tiles)
+                            t_turn_to_places.append(curve_to_t_turn(
+                                n_tile, OPPOSITE_DIRECTION[output_direction], tiles))
                         if n_tile.name == 'Straight':
                             direction = [x[0] for x in n_tile.flow]
-                            t_turn_to_place = (straight_to_t_turn(
-                                n_tile, OPPOSITE_DIRECTION[output_direction], direction[0], tiles),
+                            t_turn_to_places.append(
                                 straight_to_t_turn(
-                                n_tile, OPPOSITE_DIRECTION[output_direction], direction[1], tiles))
+                                    n_tile, OPPOSITE_DIRECTION[output_direction], direction[0], tiles))
+                            t_turn_to_places.append(
+                                straight_to_t_turn(
+                                    n_tile, OPPOSITE_DIRECTION[output_direction], direction[1], tiles))
                     else:
                         continue
 
-            new_grid = [row.copy() for row in self.grid]
-            new_grid = Grid(new_grid, self.max_placement,
-                            self.placed_tile_count+1, self.destination, self.can_change_tiled)
-
-            new_grid.set_tile(x, y, tile.index)
             # check if current tile can be transformed to T-Turn
             connect_count = 0
             direction_to_change = None
@@ -339,38 +336,25 @@ class Grid:
             # no valid tiled to connect 4 tiled around
             if connect_count == 4:
                 continue
+
+            new_grid = [row.copy() for row in self.grid]
+            new_grid = Grid(new_grid, self.max_placement,
+                            self.placed_tile_count+1, self.destination, self.can_change_tiled)
+            new_grid.set_tile(x, y, tile.index)
             if direction_to_change is not None:
                 if tile.name == 'Curve':
                     t_turn_self = curve_to_t_turn(
                         tile, direction_to_change, tiles)
                     new_grid.set_tile(x, y, t_turn_self.index)
-            # TODO: CONTINUE FROM HERE
-            if t_turn_to_place:
-                if isinstance(t_turn_to_place, tuple):
-                    temp_grid = new_grid.copy()
-                    temp_grid.set_tile(nx, ny, t_turn_to_place[0].index)
-                    if len(pos_to_place_tile) > 1:
-                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
-                    else:
-                        yield temp_grid
-                    temp_grid = new_grid.copy()
-                    temp_grid.set_tile(nx, ny, t_turn_to_place[1].index)
-                    if len(pos_to_place_tile) > 1:
-                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
-                    else:
-                        yield temp_grid
-                else:
-                    temp_grid = new_grid.copy()
+
+            for t_turn_to_place in t_turn_to_places:
+                temp_grid = new_grid.copy()
+                if t_turn_to_place is not None:
                     temp_grid.set_tile(nx, ny, t_turn_to_place.index)
-                    if len(pos_to_place_tile) > 1:
-                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
-                    else:
-                        yield temp_grid
-            else:
                 if len(pos_to_place_tile) > 1:
-                    yield from new_grid.get_possible_grid(pos_to_place_tile[1:])
+                    yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
                 else:
-                    yield new_grid
+                    yield temp_grid
 
 
 def process(grid, carts):
