@@ -6,8 +6,9 @@ import cv2
 import numpy as np
 import PIL
 
-from tile import Tile, create_tiles
-from utils import DIRECTION, DIRECTION_TO_STR, TimingManager, DIRECTION_DELTA
+from tile import Tile, create_tiles, curve_to_t_turn, straight_to_t_turn
+from utils import DIRECTION, DIRECTION_TO_STR, TimingManager, DIRECTION_DELTA, OPPOSITE_DIRECTION
+from tqdm import tqdm
 
 timer = TimingManager(enabled=True)
 tiles = create_tiles()
@@ -156,6 +157,7 @@ class Grid:
         self.placed_tile_count = placed_tile_count
         self.destination = destination
         self.can_change_tiled = can_change_tiled
+
         if can_change_tiled is None:
             self.calc_can_change_tiled()
 
@@ -292,23 +294,52 @@ class Grid:
 
             nx, ny = x + DIRECTION_DELTA[output_direction][0], y + \
                 DIRECTION_DELTA[output_direction][1]
-
+            t_turn_to_place = None
             if 0 <= nx < self.width and 0 <= ny < self.height:
                 n_tile = self.get_tile(nx, ny)
                 if not Tile.check_connection(tile, n_tile, output_direction) and n_tile.name != 'Empty':
-                    # by pass for now
-                    continue
-                    # if not self.can_change_tiled[(nx, ny)] and n_tile.name != 'T_turn':
-                    #  try to place T_turn tile instead
-
+                    if self.can_change_tiled[(nx, ny)]:
+                        if n_tile.name == 'Curve':
+                            t_turn_to_place = curve_to_t_turn(
+                                n_tile, OPPOSITE_DIRECTION[output_direction], tiles)
+                        if n_tile.name == 'Straight':
+                            direction = [x[0] for x in n_tile.flow]
+                            t_turn_to_place = (straight_to_t_turn(
+                                n_tile, OPPOSITE_DIRECTION[output_direction], direction[0], tiles),
+                                straight_to_t_turn(
+                                n_tile, OPPOSITE_DIRECTION[output_direction], direction[1], tiles))
+                    else:
+                        continue
             new_grid = [row.copy() for row in self.grid]
-            new_grid[y][x] = tile.index
             new_grid = Grid(new_grid, self.max_placement,
                             self.placed_tile_count+1, self.destination, self.can_change_tiled)
-            if len(pos_to_place_tile) > 1:
-                yield from new_grid.get_possible_grid(pos_to_place_tile[1:])
+            new_grid.set_tile(x, y, tile.index)
+            if t_turn_to_place:
+                if isinstance(t_turn_to_place, tuple):
+                    temp_grid = new_grid.copy()
+                    temp_grid.set_tile(nx, ny, t_turn_to_place[0].index)
+                    if len(pos_to_place_tile) > 1:
+                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
+                    else:
+                        yield temp_grid
+                    temp_grid = new_grid.copy()
+                    temp_grid.set_tile(nx, ny, t_turn_to_place[1].index)
+                    if len(pos_to_place_tile) > 1:
+                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
+                    else:
+                        yield temp_grid
+                else:
+                    temp_grid = new_grid.copy()
+                    temp_grid.set_tile(nx, ny, t_turn_to_place.index)
+                    if len(pos_to_place_tile) > 1:
+                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
+                    else:
+                        yield temp_grid
             else:
-                yield new_grid
+                if len(pos_to_place_tile) > 1:
+                    yield from new_grid.get_possible_grid(pos_to_place_tile[1:])
+                else:
+                    yield new_grid
 
 
 def process(grid, carts):
@@ -384,23 +415,28 @@ def process(grid, carts):
 def find_solution(i_grid: Grid, i_carts: list[Cart]):
     queue = deque([])
     queue.append((i_grid, i_carts))
-    iteration = 0
+    pg = tqdm()
     while queue:
-        iteration += 1
-        grid, carts = queue.popleft()
+        pg.update(1)
+        grid, carts = queue.popleft()  # popLeft for BFS, popRight for DFS
+        # grid.preview_image(carts,)
         state, result = process(grid, carts)
         if state == 'solution':
             print()
             print("Solution found")
             print(f"Place: {grid.placed_tile_count} tiled")
             grid.preview_image(i_carts)
+            break
         if state == 'possibilities':
             queue.extend(result)
+
+    print("No solution found")
+    pg.close()
 
 
 def main(input_file, show_preview=True):
     timer.reset()
-    MAX_PLACEMENT = 30
+    MAX_PLACEMENT = 1000
     data = load_grid(input_file)
     DESTINATION = data["destination"]
     GRID = Grid(data["grid"], MAX_PLACEMENT, destination=DESTINATION)

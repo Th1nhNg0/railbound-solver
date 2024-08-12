@@ -38,8 +38,8 @@ class TimingManager:
             avg_time = mean(times)
             total_time = sum(times)
             indent = "  " * (operation.count("/"))
-            print(f"{indent}{operation.split(
-                '/')[-1]}: {avg_time:.6f} seconds (total: {total_time:.6f} seconds)")
+            print(
+                f"{indent}{operation.split('/')[-1]}: {avg_time:.6f} seconds (total: {total_time:.6f} seconds)")
 
     def enable(self):
         self.enabled = True

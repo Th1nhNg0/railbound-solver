@@ -244,8 +244,8 @@ def curve_to_t_turn(curve_tile: Tile, direction: int, all_tiles: list[Tile]) -> 
         raise ValueError("The provided tile is not a Curve tile")
 
     if curve_tile.edges[direction] != 0:
-        raise ValueError(f"The specified direction {
-                         DIRECTION_TO_STR[direction]} is already open")
+        raise ValueError(
+            f"The specified direction { DIRECTION_TO_STR[direction]} is already open")
 
     # Create the new edges configuration
     new_edges = list(curve_tile.edges)
@@ -256,7 +256,51 @@ def curve_to_t_turn(curve_tile: Tile, direction: int, all_tiles: list[Tile]) -> 
     new_flow = curve_tile.flow.copy()
     opposite_direction = OPPOSITE_DIRECTION[direction]
     new_flow.append((opposite_direction, opposite_direction))
-    print(new_flow)
+    # Find the matching T-Turn tile
+    for tile in all_tiles:
+        if (tile.name == 'T_turn' and
+            tile.edges == new_edges and
+                set(tile.flow) == set(new_flow)):
+            return tile
+
+    raise ValueError("No matching T-Turn tile found in the provided tiles")
+
+
+def straight_to_t_turn(straight_tile: Tile, new_opening: int, cart_direction: int, all_tiles: list[Tile]) -> Tile:
+    """
+    Convert a straight tile to a T-Turn tile by adding a new opening in the specified direction.
+
+    Args:
+        straight_tile (Tile): The straight tile to convert
+        new_opening (int): The direction where the new opening will be added (use DIRECTION constants)
+        cart_direction (int): The direction the cart is currently moving on the straight tile (use DIRECTION constants)
+        all_tiles (list[Tile]): The list of all tiles created by create_tiles()
+
+    Returns:
+        Tile: The corresponding T-Turn tile from all_tiles
+    """
+    if 'Straight' not in straight_tile.name:
+        raise ValueError("The provided tile is not a Straight tile")
+
+    if straight_tile.edges[new_opening] != 0:
+        raise ValueError(
+            f"The specified new opening direction {DIRECTION_TO_STR[new_opening]} is already open")
+
+    if straight_tile.edges[cart_direction] != 1 or straight_tile.edges[OPPOSITE_DIRECTION[cart_direction]] != 1:
+        raise ValueError(
+            f"The specified cart direction {DIRECTION_TO_STR[cart_direction]} is not valid for this straight tile")
+
+    # Create the new edges configuration
+    new_edges = list(straight_tile.edges)
+    new_edges[new_opening] = 1
+    new_edges = tuple(new_edges)
+
+    # Determine the new flow
+    existing_flow = (cart_direction, cart_direction)
+    new_flow = [existing_flow]
+    new_flow.append(
+        (OPPOSITE_DIRECTION[cart_direction], new_opening))
+    new_flow.append((OPPOSITE_DIRECTION[new_opening], cart_direction))
     # Find the matching T-Turn tile
     for tile in all_tiles:
         if (tile.name == 'T_turn' and
