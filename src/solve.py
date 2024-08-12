@@ -280,6 +280,7 @@ class Grid:
             None: If there are no positions to place tiles.
 
         """
+        self.preview_image(wait_time=1)
         if not pos_to_place_tile or self.placed_tile_count >= self.max_placement:
             return
         x, y, d = pos_to_place_tile[0]
@@ -290,6 +291,12 @@ class Grid:
             output_direction = tile.get_output_direction(d)
             if output_direction == -1:
                 continue
+
+            px, py = x - DIRECTION_DELTA[d][0], y - DIRECTION_DELTA[d][1]
+            if 0 <= px < self.width and 0 <= py < self.height:
+                p_tile = self.get_tile(px, py)
+                if not Tile.check_connection(tile, p_tile, OPPOSITE_DIRECTION[d]) and p_tile.name != 'Empty':
+                    continue
 
             nx, ny = x + DIRECTION_DELTA[output_direction][0], y + \
                 DIRECTION_DELTA[output_direction][1]
@@ -311,13 +318,32 @@ class Grid:
                     else:
                         continue
 
-            # check if current tile can be transformed to T-Turn
-
             new_grid = [row.copy() for row in self.grid]
             new_grid = Grid(new_grid, self.max_placement,
                             self.placed_tile_count+1, self.destination, self.can_change_tiled)
 
             new_grid.set_tile(x, y, tile.index)
+            # check if current tile can be transformed to T-Turn
+            connect_count = 0
+            direction_to_change = None
+            for _d in range(4):
+                _nx = x + DIRECTION_DELTA[_d][0]
+                _ny = y + DIRECTION_DELTA[_d][1]
+                if 0 <= _nx < self.width and 0 <= _ny < self.height:
+                    _n_tile = self.get_tile(_nx, _ny)
+                    _d_to_check = OPPOSITE_DIRECTION[_d]
+                    if _n_tile.edges[_d_to_check] == 1:
+                        connect_count += 1
+                        if tile.edges[_d] == 0:
+                            direction_to_change = _d
+            # no valid tiled to connect 4 tiled around
+            if connect_count == 4:
+                continue
+            if direction_to_change is not None:
+                if tile.name == 'Curve':
+                    t_turn_self = curve_to_t_turn(
+                        tile, direction_to_change, tiles)
+                    new_grid.set_tile(x, y, t_turn_self.index)
 
             if t_turn_to_place:
                 if isinstance(t_turn_to_place, tuple):
@@ -350,7 +376,7 @@ class Grid:
 def process(grid, carts):
     new_carts = [cart.copy() for cart in carts]
     new_grid = grid.copy()
-
+    # new_grid.preview_image(new_carts, 300)
     pos_to_place_tile = []
 
     # simulate the movement of the carts
