@@ -85,13 +85,13 @@ class Cart:
             Tuple[int, int]: The next position coordinates(x, y).
         """
         next_x, next_y = self.x, self.y
-        if self.direction == DIRECTION['top']:
+        if self.direction == DIRECTION.TOP:
             next_y -= 1
-        elif self.direction == DIRECTION['bottom']:
+        elif self.direction == DIRECTION.BOTTOM:
             next_y += 1
-        elif self.direction == DIRECTION['left']:
+        elif self.direction == DIRECTION.LEFT:
             next_x -= 1
-        elif self.direction == DIRECTION['right']:
+        elif self.direction == DIRECTION.RIGHT:
             next_x += 1
         return next_x, next_y
 
@@ -232,16 +232,16 @@ class Grid:
                                   fill='red', outline='red')
 
                 # draw direction line
-                if direction == DIRECTION['top']:
+                if direction == DIRECTION.TOP:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 50, cart.y * 100 + 30),
                                    fill='black', width=2)
-                elif direction == DIRECTION['bottom']:
+                elif direction == DIRECTION.BOTTOM:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 50, cart.y * 100 + 70),
                                    fill='black', width=2)
-                elif direction == DIRECTION['left']:
+                elif direction == DIRECTION.LEFT:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 30, cart.y * 100 + 50),
                                    fill='black', width=2)
-                elif direction == DIRECTION['right']:
+                elif direction == DIRECTION.RIGHT:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 70, cart.y * 100 + 50),
                                    fill='black', width=2)
 
@@ -292,14 +292,14 @@ class Grid:
 
             nx, ny = x + DIRECTION_DELTA[output_direction][0], y + \
                 DIRECTION_DELTA[output_direction][1]
+
             if 0 <= nx < self.width and 0 <= ny < self.height:
                 n_tile = self.get_tile(nx, ny)
                 if not Tile.check_connection(tile, n_tile, output_direction) and n_tile.name != 'Empty':
-                    if not self.can_change_tiled[(nx, ny)]:
-                        continue
-                    print('should update: ', nx, ny, n_tile.name)
-            else:
-                continue
+                    # by pass for now
+                    continue
+                    # if not self.can_change_tiled[(nx, ny)] and n_tile.name != 'T_turn':
+                    #  try to place T_turn tile instead
 
             new_grid = [row.copy() for row in self.grid]
             new_grid[y][x] = tile.index
@@ -318,7 +318,7 @@ def process(grid, carts):
     pos_to_place_tile = []
 
     # simulate the movement of the carts
-    max_steps = 100  # to prevent infinite loop
+    max_steps = 30  # to prevent infinite loop
     while len(pos_to_place_tile) == 0 and max_steps > 0:
         if all(cart.reached_destination for cart in new_carts):
             return ('solution', new_grid)
@@ -382,28 +382,25 @@ def process(grid, carts):
 
 
 def find_solution(i_grid: Grid, i_carts: list[Cart]):
-
     queue = deque([])
     queue.append((i_grid, i_carts))
-
+    iteration = 0
     while queue:
+        iteration += 1
         grid, carts = queue.popleft()
-        grid.preview_image(carts)
         state, result = process(grid, carts)
         if state == 'solution':
+            print()
             print("Solution found")
-            grid.preview_image(carts)
-            break
-        elif state == 'dead_end':
-            print("Dead end")
-        elif state == 'possibilities':
-            for new_grid, new_carts in result:
-                queue.append((new_grid, new_carts))
+            print(f"Place: {grid.placed_tile_count} tiled")
+            grid.preview_image(i_carts)
+        if state == 'possibilities':
+            queue.extend(result)
 
 
 def main(input_file, show_preview=True):
     timer.reset()
-    MAX_PLACEMENT = 1000
+    MAX_PLACEMENT = 30
     data = load_grid(input_file)
     DESTINATION = data["destination"]
     GRID = Grid(data["grid"], MAX_PLACEMENT, destination=DESTINATION)

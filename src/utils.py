@@ -57,12 +57,12 @@ def load_grid(file_path):
     return data["grid"], data["destination"] if data["destination"] else None
 
 
-DIRECTION = {
-    'top': 0,
-    'right': 1,
-    'bottom': 2,
-    'left': 3
-}
+class DIRECTION:
+    TOP = 0
+    RIGHT = 1
+    BOTTOM = 2
+    LEFT = 3
+
 
 DIRECTION_TO_STR = {
     0: 'top',
@@ -80,8 +80,8 @@ DIRECTION_DELTA = {
 
 
 OPPOSITE_DIRECTION = {
-    DIRECTION['top']: DIRECTION['bottom'],
-    DIRECTION['right']: DIRECTION['left'],
-    DIRECTION['bottom']: DIRECTION['top'],
-    DIRECTION['left']: DIRECTION['right']
+    DIRECTION.TOP: DIRECTION.BOTTOM,
+    DIRECTION.RIGHT: DIRECTION.LEFT,
+    DIRECTION.BOTTOM: DIRECTION.TOP,
+    DIRECTION.LEFT: DIRECTION.RIGHT
 }

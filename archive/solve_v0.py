@@ -55,13 +55,13 @@ class Cart:
             Tuple[int, int]: The next position coordinates(x, y).
         """
         next_x, next_y = self.x, self.y
-        if self.direction == DIRECTION['top']:
+        if self.direction == DIRECTION.TOP:
             next_y -= 1
-        elif self.direction == DIRECTION['bottom']:
+        elif self.direction == DIRECTION.BOTTOM:
             next_y += 1
-        elif self.direction == DIRECTION['left']:
+        elif self.direction == DIRECTION.LEFT:
             next_x -= 1
-        elif self.direction == DIRECTION['right']:
+        elif self.direction == DIRECTION.RIGHT:
             next_x += 1
         return next_x, next_y
 
@@ -168,16 +168,16 @@ class Grid:
                                   fill='red', outline='red')
 
                 # draw direction line
-                if direction == DIRECTION['top']:
+                if direction == DIRECTION.TOP:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 50, cart.y * 100 + 30),
                                    fill='black', width=2)
-                elif direction == DIRECTION['bottom']:
+                elif direction == DIRECTION.BOTTOM:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 50, cart.y * 100 + 70),
                                    fill='black', width=2)
-                elif direction == DIRECTION['left']:
+                elif direction == DIRECTION.LEFT:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 30, cart.y * 100 + 50),
                                    fill='black', width=2)
-                elif direction == DIRECTION['right']:
+                elif direction == DIRECTION.RIGHT:
                     imageDraw.line((cart.x * 100 + 50, cart.y * 100 + 50, cart.x * 100 + 70, cart.y * 100 + 50),
                                    fill='black', width=2)
 

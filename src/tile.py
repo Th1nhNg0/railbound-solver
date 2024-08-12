@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import itertools
 from utils import DIRECTION,  DIRECTION_TO_STR, OPPOSITE_DIRECTION
+import os
 
 
 class Tile:
@@ -24,7 +25,7 @@ class Tile:
             name (str): The name of the tile.
             img (PIL.Image): The input image.
             edges (tuple of 4 ints): (top, right, bottom, left) edges of the tile.  When 2 edge on different tiles have the same value, they can be connected.
-            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile. 
+            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile.
 
         Returns:
             None
@@ -144,9 +145,11 @@ class Tile:
             bool: True if the tiles can be connected, False otherwise
 
         Example:
-        tile1 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']), (DIRECTION['left'], DIRECTION['bottom'])])
-        tile2 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']), (DIRECTION['left'], DIRECTION['bottom'])])
-        Tile.check_connection(tile1, tile2, DIRECTION['right'])
+        tile1 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0),
+                     [(DIRECTION.TOP, DIRECTION.RIGHT), (DIRECTION.LEFT, DIRECTION.BOTTOM)])
+        tile2 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0),
+                     [(DIRECTION.TOP, DIRECTION.RIGHT), (DIRECTION.LEFT, DIRECTION.BOTTOM)])
+        Tile.check_connection(tile1, tile2, DIRECTION.RIGHT)
         Means: check if the right edge of tile1 can be connected to the left edge of tile2.
         """
         # Get the edge indices for the connecting sides
@@ -172,25 +175,26 @@ def create_tiles() -> list[Tile]:
     Returns:
         list: A list of tiles with different shapes and orientations
     """
-
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     tiles = []
-    empty_tile = Tile('Empty', Image.open(
-        'images/Empty.png'), (0, 0, 0, 0), [])
+    empty_tile = Tile('Empty', Image.open(os.path.join(
+        current_dir, './images/Empty.png')), (0, 0, 0, 0), [])
 
-    curve_tile = Tile('Curve', Image.open('images/Curve.png'),
-                      (0, 1, 1, 0), [(DIRECTION['top'], DIRECTION['right']),
-                                     (DIRECTION['left'], DIRECTION['bottom'])])
-    straight_tile = Tile('Straight', Image.open(
-        'images/Straight.png'), (1, 0, 1, 0), [(DIRECTION['top'], DIRECTION['top']),
-                                               (DIRECTION['bottom'], DIRECTION['bottom'])])
-    t_turn_tile = Tile('T_turn', Image.open('images/T turn.png'), (1, 0, 1, 1),
-                       [(DIRECTION['bottom'], DIRECTION['bottom']),
-                       (DIRECTION['right'], DIRECTION['bottom']),
-                       (DIRECTION['top'], DIRECTION['left'])])
-    rock_tile = Tile('Rock', Image.open(
-        'images/Rock.png'), (0, 0, 0, 0), [])
-    dead_end = Tile('Dead end', Image.open(
-        'images/Dead end.png'), (1, 0, 0, 0), [])
+    curve_tile = Tile('Curve', Image.open(os.path.join(
+        current_dir, './images/Curve.png')),
+        (0, 1, 1, 0), [(DIRECTION.TOP, DIRECTION.RIGHT),
+                       (DIRECTION.LEFT, DIRECTION.BOTTOM)])
+    straight_tile = Tile('Straight', Image.open(os.path.join(
+        current_dir, './images/Straight.png')), (1, 0, 1, 0), [(DIRECTION.TOP, DIRECTION.TOP),
+                                                               (DIRECTION.BOTTOM, DIRECTION.BOTTOM)])
+    t_turn_tile = Tile('T_turn', Image.open(
+        os.path.join(current_dir,
+                     'images/T turn.png')), (1, 0, 1, 1),
+        [(DIRECTION.BOTTOM, DIRECTION.BOTTOM),
+         (DIRECTION.RIGHT, DIRECTION.BOTTOM),
+         (DIRECTION.TOP, DIRECTION.LEFT)])
+    rock_tile = Tile('Rock', Image.open(os.path.join(current_dir,
+                                                     './images/Rock.png')), (0, 0, 0, 0), [])
 
     tiles.append(empty_tile)
     tiles.append(curve_tile)
@@ -221,6 +225,46 @@ def create_tiles() -> list[Tile]:
         index += 1
 
     return tiles
+
+
+def curve_to_t_turn(curve_tile: Tile, direction: int, all_tiles: list[Tile]) -> Tile:
+    """
+    Convert a curve tile to a T-Turn tile by changing one of the 0s to 1 in the specified direction
+    and adding a straight flow for the new opening.
+
+    Args:
+        curve_tile (Tile): The curve tile to convert
+        direction (int): The direction to change from 0 to 1 (use DIRECTION constants)
+        all_tiles (list[Tile]): The list of all tiles created by create_tiles()
+
+    Returns:
+        Tile: The corresponding T-Turn tile from all_tiles
+    """
+    if 'Curve' not in curve_tile.name:
+        raise ValueError("The provided tile is not a Curve tile")
+
+    if curve_tile.edges[direction] != 0:
+        raise ValueError(f"The specified direction {
+                         DIRECTION_TO_STR[direction]} is already open")
+
+    # Create the new edges configuration
+    new_edges = list(curve_tile.edges)
+    new_edges[direction] = 1
+    new_edges = tuple(new_edges)
+
+    # Determine the new flow
+    new_flow = curve_tile.flow.copy()
+    opposite_direction = OPPOSITE_DIRECTION[direction]
+    new_flow.append((opposite_direction, opposite_direction))
+    print(new_flow)
+    # Find the matching T-Turn tile
+    for tile in all_tiles:
+        if (tile.name == 'T_turn' and
+            tile.edges == new_edges and
+                set(tile.flow) == set(new_flow)):
+            return tile
+
+    raise ValueError("No matching T-Turn tile found in the provided tiles")
 
 
 if __name__ == '__main__':

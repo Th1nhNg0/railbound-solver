@@ -239,16 +239,16 @@ class TileGridUI:
 
             # Draw direction line
             center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
-            if cart.direction == DIRECTION['top']:
+            if cart.direction == DIRECTION.TOP:
                 self.canvas.create_line(
                     center_x, center_y, center_x, y1 + 30, fill='black', width=2)
-            elif cart.direction == DIRECTION['bottom']:
+            elif cart.direction == DIRECTION.BOTTOM:
                 self.canvas.create_line(
                     center_x, center_y, center_x, y2 - 30, fill='black', width=2)
-            elif cart.direction == DIRECTION['left']:
+            elif cart.direction == DIRECTION.LEFT:
                 self.canvas.create_line(
                     center_x, center_y, x1 + 30, center_y, fill='black', width=2)
-            elif cart.direction == DIRECTION['right']:
+            elif cart.direction == DIRECTION.RIGHT:
                 self.canvas.create_line(
                     center_x, center_y, x2 - 30, center_y, fill='black', width=2)
 
@@ -342,7 +342,7 @@ class TileGridUI:
             existing_cart.direction = (existing_cart.direction + 1) % 4
         else:
             # Place new cart
-            new_cart = Cart(col, row, DIRECTION['right'], self.cart_order)
+            new_cart = Cart(col, row, DIRECTION.RIGHT, self.cart_order)
             self.carts.append(new_cart)
             self.cart_order += 1
 
@@ -477,7 +477,7 @@ class TileGridUI:
         """
 
         x, y = self.destination
-        direction = DIRECTION['right']  # Default direction
+        direction = DIRECTION.RIGHT  # Default direction
         new_cart = Cart(x, y, direction, self.cart_order)
         self.carts.append(new_cart)
         self.cart_order += 1
