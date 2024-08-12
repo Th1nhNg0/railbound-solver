@@ -280,7 +280,7 @@ class Grid:
             None: If there are no positions to place tiles.
 
         """
-        self.preview_image(wait_time=1)
+        self.preview_image(wait_time=0)
         if not pos_to_place_tile or self.placed_tile_count >= self.max_placement:
             return
         x, y, d = pos_to_place_tile[0]
@@ -319,6 +319,8 @@ class Grid:
                                     n_tile, OPPOSITE_DIRECTION[output_direction], direction[1], tiles))
                     else:
                         continue
+            else:
+                continue
 
             # check if current tile can be transformed to T-Turn
             connect_count = 0
@@ -341,20 +343,29 @@ class Grid:
             new_grid = Grid(new_grid, self.max_placement,
                             self.placed_tile_count+1, self.destination, self.can_change_tiled)
             new_grid.set_tile(x, y, tile.index)
+
+            tile_to_places = [tile]
             if direction_to_change is not None:
+                tile_to_places = []
                 if tile.name == 'Curve':
                     t_turn_self = curve_to_t_turn(
                         tile, direction_to_change, tiles)
-                    new_grid.set_tile(x, y, t_turn_self.index)
+                    tile_to_places.append(t_turn_self)
+                if tile.name == 'Straight':
+                    t_turn_self = straight_to_t_turn(
+                        tile, direction_to_change, d, tiles)
+                    tile_to_places.append(t_turn_self)
 
-            for t_turn_to_place in t_turn_to_places:
-                temp_grid = new_grid.copy()
-                if t_turn_to_place is not None:
-                    temp_grid.set_tile(nx, ny, t_turn_to_place.index)
-                if len(pos_to_place_tile) > 1:
-                    yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
-                else:
-                    yield temp_grid
+            for tile_to_place in tile_to_places:
+                for t_turn_to_place in t_turn_to_places:
+                    temp_grid = new_grid.copy()
+                    temp_grid.set_tile(x, y, tile_to_place.index)
+                    if t_turn_to_place is not None:
+                        temp_grid.set_tile(nx, ny, t_turn_to_place.index)
+                    if len(pos_to_place_tile) > 1:
+                        yield from temp_grid.get_possible_grid(pos_to_place_tile[1:])
+                    else:
+                        yield temp_grid
 
 
 def process(grid, carts):
@@ -443,7 +454,7 @@ def find_solution(i_grid: Grid, i_carts: list[Cart]):
                 f"Iteration: {iteration}, Total: {total}, Queue: {len(queue)}")
 
         iteration += 1
-        grid, carts = queue.popleft()  # popLeft for BFS, pop for DFS
+        grid, carts = queue.pop()  # popLeft for BFS, pop for DFS
         if grid.placed_tile_count > best_solution[0]:
             continue
         with timer.measure_time('process'):
@@ -451,10 +462,10 @@ def find_solution(i_grid: Grid, i_carts: list[Cart]):
         if state == 'solution':
             # save the best solution
             if grid.placed_tile_count < best_solution[0]:
-                grid.preview_image(carts, 200)
                 best_solution = (grid.placed_tile_count, grid)
                 print(
                     f"Found solution: {best_solution[0]}, Iteration: {iteration}, Total: {total}, Queue: {len(queue)}")
+                grid.preview_image(i_carts, 0)
         if state == 'possibilities':
             queue.extend(result)
             total += len(result)
