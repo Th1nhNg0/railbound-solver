@@ -8,9 +8,8 @@ import PIL
 
 from tile import Tile, create_tiles, curve_to_t_turn, straight_to_t_turn
 from utils import DIRECTION, DIRECTION_TO_STR, TimingManager, DIRECTION_DELTA, OPPOSITE_DIRECTION
-from tqdm import tqdm
 
-timer = TimingManager(enabled=True)
+timer = TimingManager(enabled=False)
 tiles = create_tiles()
 
 
@@ -285,7 +284,7 @@ class Grid:
             return
         x, y, d = pos_to_place_tile[0]
         for tile in tiles:
-            if tile.name in ['Empty', 'Rock', 'T_turn']:
+            if tile.name not in ['Straight', 'Curve']:
                 continue
 
             output_direction = tile.get_output_direction(d)
@@ -294,6 +293,7 @@ class Grid:
 
             nx, ny = x + DIRECTION_DELTA[output_direction][0], y + \
                 DIRECTION_DELTA[output_direction][1]
+
             t_turn_to_place = None
             if 0 <= nx < self.width and 0 <= ny < self.height:
                 n_tile = self.get_tile(nx, ny)
@@ -310,10 +310,15 @@ class Grid:
                                 n_tile, OPPOSITE_DIRECTION[output_direction], direction[1], tiles))
                     else:
                         continue
+
+            # check if current tile can be transformed to T-Turn
+
             new_grid = [row.copy() for row in self.grid]
             new_grid = Grid(new_grid, self.max_placement,
                             self.placed_tile_count+1, self.destination, self.can_change_tiled)
+
             new_grid.set_tile(x, y, tile.index)
+
             if t_turn_to_place:
                 if isinstance(t_turn_to_place, tuple):
                     temp_grid = new_grid.copy()
@@ -350,100 +355,122 @@ def process(grid, carts):
 
     # simulate the movement of the carts
     max_steps = 30  # to prevent infinite loop
-    while len(pos_to_place_tile) == 0 and max_steps > 0:
-        if all(cart.reached_destination for cart in new_carts):
-            return ('solution', new_grid)
+    with timer.measure_time('simulation'):
+        while len(pos_to_place_tile) == 0 and max_steps > 0:
+            if all(cart.reached_destination for cart in new_carts):
+                return ('solution', new_grid)
 
-        max_steps -= 1
-        for cart in new_carts:
-            if cart.reached_destination:
+            max_steps -= 1
+            for cart in new_carts:
+                if cart.reached_destination:
+                    continue
+                next_x, next_y = cart.get_next_position()
+                if next_x < 0 or next_x >= new_grid.width or next_y < 0 or next_y >= new_grid.height:
+                    return ('dead_end', 'cart out of grid')
+                next_tile = new_grid.get_tile(next_x, next_y)
+
+                # check if the cart crashed into a rock
+                if next_tile.name == "Rock":
+                    return ('dead_end', 'cart crashed into rock')
+
+                # check if the cart reached the destination
+                if (next_x, next_y) == new_grid.destination:
+                    cart.reached_destination = True
+                    # check if other carts are still moving or
+                    # have reached their destination in the right order
+                    for other_cart in new_carts:
+                        if not other_cart.reached_destination and other_cart.order < cart.order:
+                            return ('dead_end', 'cart reached destination out of order')
+
+                cart.move(next_x, next_y, cart.direction)
+
+                if next_tile.name == "Empty":
+                    pos_to_place_tile.append((next_x, next_y, cart.direction))
+                else:
+                    cart.update_direction(next_tile)
+
+            # check collision
+            for i, cart in enumerate(new_carts):
+                for j, other_cart in enumerate(new_carts):
+                    if i == j:
+                        continue
+                    if cart.reached_destination or other_cart.reached_destination:
+                        continue
+                    if Cart.check_collision(cart.x, cart.y, other_cart.x, other_cart.y):
+                        return ('dead_end', 'collision')
+                    if (Cart.check_collision(cart.x, cart.y,
+                                             other_cart.previous_x, other_cart.previous_y)
+                        and Cart.check_collision(cart.previous_x, cart.previous_y,
+                                                 other_cart.x, other_cart.y)):
+                        return ('dead_end', 'collision')
                 continue
-            next_x, next_y = cart.get_next_position()
-            if next_x < 0 or next_x >= new_grid.width or next_y < 0 or next_y >= new_grid.height:
-                return ('dead_end', 'cart out of grid')
-            next_tile = new_grid.get_tile(next_x, next_y)
-
-            # check if the cart crashed into a rock
-            if next_tile.name == "Rock":
-                return ('dead_end', 'cart crashed into rock')
-
-            # check if the cart reached the destination
-            if (next_x, next_y) == new_grid.destination:
-                cart.reached_destination = True
-                # check if other carts are still moving or
-                # have reached their destination in the right order
-                for other_cart in new_carts:
-                    if not other_cart.reached_destination and other_cart.order < cart.order:
-                        return ('dead_end', 'cart reached destination out of order')
-
-            cart.move(next_x, next_y, cart.direction)
-
-            if next_tile.name == "Empty":
-                pos_to_place_tile.append((next_x, next_y, cart.direction))
-            else:
-                cart.update_direction(next_tile)
-
-        # check collision
-        for i, cart in enumerate(new_carts):
-            for j, other_cart in enumerate(new_carts):
-                if i == j:
-                    continue
-                if cart.reached_destination or other_cart.reached_destination:
-                    continue
-                if Cart.check_collision(cart.x, cart.y, other_cart.x, other_cart.y):
-                    return ('dead_end', 'collision')
-                if (Cart.check_collision(cart.x, cart.y,
-                                         other_cart.previous_x, other_cart.previous_y)
-                    and Cart.check_collision(cart.previous_x, cart.previous_y,
-                                             other_cart.x, other_cart.y)):
-                    return ('dead_end', 'collision')
-            continue
 
     # explore more possibilities, return list of possible
-    results = []
-    pos_to_place_tile_pos = [(x, y) for x, y, _ in pos_to_place_tile]
-    for new_grid in grid.get_possible_grid(pos_to_place_tile):
-        new_carts_copy = [cart.copy() for cart in new_carts]
-        for cart in new_carts_copy:
-            if (cart.x, cart.y) in pos_to_place_tile_pos:
-                tile = new_grid.get_tile(cart.x, cart.y)
-                cart.update_direction(tile)
-        results.append((new_grid, new_carts_copy))
+    with timer.measure_time('get_possible_grid'):
+        results = []
+        pos_to_place_tile_pos = [(x, y) for x, y, _ in pos_to_place_tile]
+        for new_grid in grid.get_possible_grid(pos_to_place_tile):
+            new_carts_copy = [cart.copy() for cart in new_carts]
+            for cart in new_carts_copy:
+                if (cart.x, cart.y) in pos_to_place_tile_pos:
+                    tile = new_grid.get_tile(cart.x, cart.y)
+                    cart.update_direction(tile)
+            results.append((new_grid, new_carts_copy))
     return ('possibilities', results)
 
 
 def find_solution(i_grid: Grid, i_carts: list[Cart]):
+    # (min_steps, best_solution)
+    best_solution = (1e8, None)
+
     queue = deque([])
     queue.append((i_grid, i_carts))
-    pg = tqdm()
+    iteration = 0
+    total = 0
     while queue:
-        pg.update(1)
-        grid, carts = queue.popleft()  # popLeft for BFS, popRight for DFS
-        # grid.preview_image(carts,)
-        state, result = process(grid, carts)
+        if iteration % 5000 == 0:
+            print(
+                f"Iteration: {iteration}, Total: {total}, Queue: {len(queue)}")
+
+        iteration += 1
+        grid, carts = queue.popleft()  # popLeft for BFS, pop for DFS
+        if grid.placed_tile_count > best_solution[0]:
+            continue
+        with timer.measure_time('process'):
+            state, result = process(grid, carts)
         if state == 'solution':
-            print()
-            print("Solution found")
-            print(f"Place: {grid.placed_tile_count} tiled")
-            grid.preview_image(i_carts)
-            break
+            # save the best solution
+            if grid.placed_tile_count < best_solution[0]:
+                grid.preview_image(carts, 200)
+                best_solution = (grid.placed_tile_count, grid)
+                print(
+                    f"Found solution: {best_solution[0]}, Iteration: {iteration}, Total: {total}, Queue: {len(queue)}")
         if state == 'possibilities':
             queue.extend(result)
+            total += len(result)
 
-    print("No solution found")
-    pg.close()
+    return best_solution
 
 
 def main(input_file, show_preview=True):
-    timer.reset()
     MAX_PLACEMENT = 1000
     data = load_grid(input_file)
     DESTINATION = data["destination"]
     GRID = Grid(data["grid"], MAX_PLACEMENT, destination=DESTINATION)
     CARTS = data["carts"]
     if show_preview:
-        GRID.preview_image(CARTS)
-    find_solution(GRID, CARTS)
+        GRID.preview_image(CARTS, 1000)
+
+    timer.reset()
+    best_solution = find_solution(GRID, CARTS)
+    timer.print_averages()
+
+    if best_solution[1]:
+        print(f"Best solution with {best_solution[0]} tile placed")
+        print(best_solution[1])
+        best_solution[1].preview_image(CARTS, 0)
+    else:
+        print("No solution found")
 
 
 if __name__ == "__main__":

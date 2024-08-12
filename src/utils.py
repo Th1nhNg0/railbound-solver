@@ -32,14 +32,24 @@ class TimingManager:
 
     def print_averages(self):
         if not self.enabled:
-            print("Timing is disabled.")
             return
+
+        print('\n' + '=' * 80)
+        print("{:^80}".format("Average Execution Times"))
+        print('=' * 80)
+        print("{:<50} {:>15} {:>15}".format(
+            "Operation", "Avg Time (s)", "Total Time (s)"))
+        print('-' * 80)
+
         for operation, times in sorted(self.execution_times.items()):
             avg_time = mean(times)
             total_time = sum(times)
             indent = "  " * (operation.count("/"))
-            print(
-                f"{indent}{operation.split('/')[-1]}: {avg_time:.6f} seconds (total: {total_time:.6f} seconds)")
+            operation_name = operation.split('/')[-1]
+            print("{:<50} {:>15.6f} {:>15.6f}".format(
+                f"{indent}{operation_name}", avg_time, total_time))
+
+        print('=' * 80 + '\n')
 
     def enable(self):
         self.enabled = True

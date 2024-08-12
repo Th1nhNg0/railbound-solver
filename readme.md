@@ -90,7 +90,7 @@ The solver uses a breadth-first search algorithm to explore possible track confi
 2. Implement 3-Way Track Generation Rules
 
    - [x] Only generate 3-way tracks when:
-     - [ ] A car intersects with a track
+     - [x] A car intersects with a track
 
 3. Code Refactoring
 
