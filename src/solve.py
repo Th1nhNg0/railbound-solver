@@ -344,7 +344,7 @@ class Grid:
                     t_turn_self = curve_to_t_turn(
                         tile, direction_to_change, tiles)
                     new_grid.set_tile(x, y, t_turn_self.index)
-
+            # TODO: CONTINUE FROM HERE
             if t_turn_to_place:
                 if isinstance(t_turn_to_place, tuple):
                     temp_grid = new_grid.copy()
