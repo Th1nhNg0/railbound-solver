@@ -3,8 +3,6 @@ This module contains the Tile class that represents a tile in the game.
 """
 
 from PIL import Image, ImageDraw
-import cv2
-import numpy as np
 import itertools
 from utils import DIRECTION, OPPOSITE_DIRECTION
 import os
@@ -51,8 +49,8 @@ class Tile:
         rotated_edges = self.edges[-n:] + self.edges[:-n]
         flow = []
         for i, o in self.flow:
-            i = (i + n) % 4
-            o = (o + n) % 4
+            i = DIRECTION((i + n) % 4)
+            o = DIRECTION((o + n) % 4)
             flow.append((i, o))
         return Tile(self.name, rotated_img, rotated_edges, flow)
 
@@ -72,9 +70,9 @@ class Tile:
             flow = []
             for i, o in self.flow:
                 if i % 2 == 0:
-                    i = (i + 2) % 4
+                    i = DIRECTION((i + 2) % 4)
                 if o % 2 == 0:
-                    o = (o + 2) % 4
+                    o = DIRECTION((o + 2) % 4)
                 flow.append((i, o))
         elif axes == "horizontal":
             flipped_img = self.img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -82,9 +80,9 @@ class Tile:
             flow = []
             for i, o in self.flow:
                 if i % 2 == 1:
-                    i = (i + 2) % 4
+                    i = DIRECTION((i + 2) % 4)
                 if o % 2 == 1:
-                    o = (o + 2) % 4
+                    o = DIRECTION((o + 2) % 4)
                 flow.append((i, o))
         return Tile(self.name, flipped_img, flipped_edges, flow)
 
@@ -239,113 +237,74 @@ def create_tiles() -> list[Tile]:
     return tiles
 
 
-def curve_to_t_turn(
-    curve_tile: Tile, direction: DIRECTION, all_tiles: list[Tile]
-) -> Tile:
+def find_possible_tiles(grid, row, col):
     """
-    Convert a curve tile to a T-Turn tile by changing one of the 0s to 1 in the specified direction
-    and adding a straight flow for the new opening.
+    Find all possible tiles that can be placed at a specific position in the grid.
 
     Args:
-        curve_tile (Tile): The curve tile to convert
-        direction (int): The direction to change from 0 to 1 (use DIRECTION constants)
-        all_tiles (list[Tile]): The list of all tiles created by create_tiles()
+        grid (List[List[int]]): The grid of tile indices
+        row (int): The row index of the position to check
+        col (int): The column index of the position to check
+        all_tiles (List[Tile]): List of all available tiles
 
     Returns:
-        Tile: The corresponding T-Turn tile from all_tiles
+        List[int]: List of indices of compatible tiles
     """
-    if "Curve" not in curve_tile.name:
-        raise ValueError("The provided tile is not a Curve tile")
+    height = len(grid)
+    width = len(grid[0]) if grid else 0
+    # make sure row and col are within the grid
+    if row < 0 or row >= height or col < 0 or col >= width:
+        return []
+    # Get adjacent tile indices
+    top = grid[row - 1][col] if row > 0 else None
+    right = grid[row][col + 1] if col < width - 1 else None
+    bottom = grid[row + 1][col] if row < height - 1 else None
+    left = grid[row][col - 1] if col > 0 else None
 
-    if curve_tile.edges[direction] != 0:
-        raise ValueError(f"The specified direction {direction.name} is already open")
+    # Get edges of adjacent tiles
+    top_edge = TILES[top].edges[2] if top is not None else 0
+    right_edge = TILES[right].edges[3] if right is not None else 0
+    bottom_edge = TILES[bottom].edges[0] if bottom is not None else 0
+    left_edge = TILES[left].edges[1] if left is not None else 0
 
-    # Create the new edges configuration
-    new_edges = list(curve_tile.edges)
-    new_edges[direction] = 1
-    new_edges = tuple(new_edges)
+    top_edge = None if top == 0 else top_edge
+    right_edge = None if right == 0 else right_edge
+    bottom_edge = None if bottom == 0 else bottom_edge
+    left_edge = None if left == 0 else left_edge
 
-    # Determine the new flow
-    new_flow = curve_tile.flow.copy()
-    opposite_direction = OPPOSITE_DIRECTION[direction]
-    new_flow.append((opposite_direction, opposite_direction))
-    # Find the matching T-Turn tile
-    for tile in all_tiles:
+    compatible_tiles = []
+
+    for tile in TILES:
         if (
-            tile.name == "T_turn"
-            and tile.edges == new_edges
-            and set(tile.flow) == set(new_flow)
+            (top_edge is None or tile.edges[0] == top_edge)
+            and (right_edge is None or tile.edges[1] == right_edge)
+            and (bottom_edge is None or tile.edges[2] == bottom_edge)
+            and (left_edge is None or tile.edges[3] == left_edge)
         ):
-            return tile
+            compatible_tiles.append(tile.index)
 
-    raise ValueError("No matching T-Turn tile found in the provided tiles")
-
-
-def straight_to_t_turn(
-    straight_tile: Tile,
-    new_opening: DIRECTION,
-    cart_direction: DIRECTION,
-    all_tiles: list[Tile],
-) -> Tile:
-    """
-    Convert a straight tile to a T-Turn tile by adding a new opening in the specified direction.
-
-    Args:
-        straight_tile (Tile): The straight tile to convert
-        new_opening (int): The direction where the new opening will be added (use DIRECTION constants)
-        cart_direction (int): The direction the cart is currently moving on the straight tile (use DIRECTION constants)
-        all_tiles (list[Tile]): The list of all tiles created by create_tiles()
-
-    Returns:
-        Tile: The corresponding T-Turn tile from all_tiles
-    """
-    if "Straight" not in straight_tile.name:
-        raise ValueError("The provided tile is not a Straight tile")
-
-    if straight_tile.edges[new_opening] != 0:
-        raise ValueError(
-            f"The specified new opening direction {new_opening.name} is already open"
-        )
-
-    if (
-        straight_tile.edges[cart_direction] != 1
-        or straight_tile.edges[OPPOSITE_DIRECTION[cart_direction]] != 1
-    ):
-        raise ValueError(
-            f"The specified cart direction {cart_direction.name} is not valid for this straight tile"
-        )
-
-    # Create the new edges configuration
-    new_edges = list(straight_tile.edges)
-    new_edges[new_opening] = 1
-    new_edges = tuple(new_edges)
-
-    # Determine the new flow
-    existing_flow = (cart_direction, cart_direction)
-    new_flow = [existing_flow]
-    new_flow.append((OPPOSITE_DIRECTION[cart_direction], new_opening))
-    new_flow.append((OPPOSITE_DIRECTION[new_opening], cart_direction))
-    # Find the matching T-Turn tile
-    for tile in all_tiles:
-        if (
-            tile.name == "T_turn"
-            and tile.edges == new_edges
-            and set(tile.flow) == set(new_flow)
-        ):
-            return tile
-
-    raise ValueError("No matching T-Turn tile found in the provided tiles")
+    return compatible_tiles
 
 
 TILES = create_tiles()
 
+
 if __name__ == "__main__":
-    # preview the tiles
-    tiles = create_tiles()
-    print(len(tiles))
-    for tile in tiles:
-        print(tile)
-        # show the image in a window, scale the image 4 times
-        cv2.imshow("Tile", np.array(tile.image_with_edge_indicators))
-        cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    grid =     [
+        [0, 0, 5, 0, 0],
+        [0, 1, 8, 2, 0],
+        [0, 0, 15, 0, 0],
+        [0, 4, 6, 3, 0],
+        [5, 0, 0, 0, 5],
+    ]
+    # Example usage
+    row = 0  # Choose the row you want to check
+    col = 2  # Choose the column you want to check
+
+    possible_tiles = find_possible_tiles(grid, row, col)
+
+    print(f"Possible tiles for position ({row}, {col}): {possible_tiles}")
+    for tile_index in possible_tiles:
+        # print all possible grid with the possible tiles
+        grid[row][col] = tile_index
+        print(grid, ",")

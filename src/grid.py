@@ -3,7 +3,7 @@ import cv2
 from PIL import Image, ImageDraw
 from utils import DIRECTION, DIRECTION_DELTA
 import numpy as np
-from tile import TILES, Tile
+from tile import TILES, Tile, find_possible_tiles
 import copy
 import itertools
 from cart import Cart
@@ -194,55 +194,44 @@ class Grid:
         Returns:
             List[Grid]: A list of new grid configurations with tiles placed on the board.
         """
-        tile_to_place_idx = [
-            tile.index
-            for tile in TILES
-            if tile.name == "Straight" or tile.name == "Curve" or tile.name == "T_turn"
-        ]
         # Generate all possible combinations of tile placements
-        tile_combinations = itertools.product(
-            tile_to_place_idx, repeat=len(pos_to_place_tile)
-        )
-
+        tile_combinations = []
+        for pos in pos_to_place_tile:
+            possible_tiles = find_possible_tiles(self.grid, pos[1], pos[0])
+            tile_combinations.append(possible_tiles)
+        tile_combinations = itertools.product(*tile_combinations)
         possible_grids = []
         for combination in tile_combinations:
             new_grid = copy.deepcopy(self)
             for (x, y), tile_idx in zip(pos_to_place_tile, combination):
                 new_grid[y][x] = tile_idx
-            if new_grid.is_grid_valid():
+            if new_grid.is_tiles_valid(pos_to_place_tile):
                 new_grid.tile_placed_count += len(pos_to_place_tile)
                 possible_grids.append(new_grid)
 
         return possible_grids
 
-    def is_grid_valid(self):
+    def is_tiles_valid(self, tiles: list[tuple[int, int]]):
         """
         Check if the grid configuration is valid.
 
         Returns:
             bool: True if the grid is valid, False otherwise.
         """
-        for y in range(self.height):
-            for x in range(self.width):
-                tile = TILES[self.grid[y][x]]
-                if tile.name == "Empty":
-                    continue
-
-                for direction in DIRECTION:
-                    nx = x + DIRECTION_DELTA[direction][0]
-                    ny = y + DIRECTION_DELTA[direction][1]
-                    if nx < 0 or nx >= self.width or ny < 0 or ny >= self.height:
-                        if (
-                            tile.edges[direction] != 0
-                            and (x, y) not in self.freeze_tiles
-                        ):
-                            return False
-                        continue
-                    next_tile = TILES[self.grid[ny][nx]]
-                    if next_tile.name == "Empty":
-                        continue
-                    if not Tile.check_connection(tile, next_tile, direction):
+        for x, y in tiles:
+            tile = TILES[self.grid[y][x]]
+            for direction in DIRECTION:
+                nx = x + DIRECTION_DELTA[direction][0]
+                ny = y + DIRECTION_DELTA[direction][1]
+                if nx < 0 or nx >= self.width or ny < 0 or ny >= self.height:
+                    if tile.edges[direction] != 0 and (x, y) not in self.freeze_tiles:
                         return False
+                    continue
+                next_tile = TILES[self.grid[ny][nx]]
+                if next_tile.name == "Empty":
+                    continue
+                if not Tile.check_connection(tile, next_tile, direction):
+                    return False
         return True
 
     def simulate(self, carts: list[Cart], max_iter=100):
@@ -316,13 +305,17 @@ class Grid:
 
 if __name__ == "__main__":
     test_data = [
-        [[5], [0], [0], [0], [5]],
+        [0, 0, 5, 0, 0],
+        [0, 1, 8, 2, 0],
+        [0, 0, 15, 0, 0],
+        [0, 4, 6, 3, 0],
+        [5, 0, 0, 0, 5],
     ]
     g = Grid(test_data, destination=(0, 0))
     print("Original grid:")
     print(g)
 
-    pos_to_place_tiles = [(1, 2), (1, 3)]
+    pos_to_place_tiles = [(1, 2), (0, 3), (0, 2)]
     # find 2 random empty cells to place tiles
     while len(pos_to_place_tiles) < 2:
         x = np.random.randint(0, g.width)

@@ -52,10 +52,13 @@ def main(
     while len(queue):
         with timer.measure_time("Iteration"):
             iteration += 1
-            # print(f"Iteration: {iteration}, Queue size: {len(queue)}", end="\r")
-            g, carts = queue.popleft()
+            g, carts = queue.pop()
             if g.tile_placed_count >= best_solution_min_tile:
                 continue
+            print(
+                f"Iteration: {iteration}, Queue size: {len(queue)}, Avg tile_count: {g.tile_placed_count}",
+                end="\r",
+            )
             g = copy.deepcopy(g)
             carts = copy.deepcopy(carts)
             # img = g.get_image(carts)
@@ -69,9 +72,7 @@ def main(
                 for grid in possible_grids:
                     queue.append((grid, carts))
             if result[0] == "success":
-                print("Success")
-                print("Tiled placed: ", g.tile_placed_count)
-                if g.tile_placed_count < best_solution_min_tile:
+                if g.tile_placed_count <= best_solution_min_tile:
                     best_solution = g
                     best_solution_min_tile = g.tile_placed_count
                     print("Best solution updated")
