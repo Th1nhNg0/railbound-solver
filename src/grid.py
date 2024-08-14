@@ -1,0 +1,322 @@
+# This file contains the Grid class which represents the railbound puzzle board.
+import cv2
+from PIL import Image, ImageDraw
+from utils import DIRECTION, DIRECTION_DELTA
+import numpy as np
+from tile import TILES, Tile
+import copy
+import itertools
+from cart import Cart
+
+
+class Grid:
+    def __init__(self, grid, destination, freeze_tiles=None):
+        self.grid = grid
+        self.height = len(grid)
+        self.width = len(grid[0])
+        self.destination = destination
+        if freeze_tiles is None:
+            self._create_freeze_tiles()
+        else:
+            self.freeze_tiles = freeze_tiles
+
+    def __getitem__(self, key):
+        return self.grid[key]
+
+    def __setitem__(self, key, value):
+        self.grid[key] = value
+
+    def __str__(self):
+        return "\n".join(" ".join(str(cell) for cell in row) for row in self.grid)
+
+    def __repr__(self):
+        return str(self)
+
+    def __copy__(self):
+        return Grid(
+            grid=copy.copy(self.grid),
+            destination=copy.copy(self.destination),
+            freeze_tiles=copy.copy(self.freeze_tiles),
+        )
+
+    def __deepcopy__(self, memo):
+        return Grid(
+            grid=copy.deepcopy(self.grid),
+            destination=copy.deepcopy(self.destination),
+            freeze_tiles=copy.deepcopy(self.freeze_tiles),
+        )
+
+    def _create_freeze_tiles(self):
+        self.freeze_tiles = set()
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y][x] != 0:
+                    self.freeze_tiles.add((x, y))
+
+    def get_image(self, carts=None):
+        """
+        Generates an image representation of the railbound puzzle board.
+
+        Args:
+            carts(list[Cart], optional): A list of Cart objects representing the carts on the board. Defaults to None.
+
+        Returns:
+            PIL.Image.Image: The generated image.
+
+        """
+        img = Image.new("RGB", (self.width * 100, self.height * 100), color="white")
+        imageDraw = ImageDraw.Draw(img)
+        for y in range(self.height):
+            for x in range(self.width):
+                tile_index = self.grid[y][x]
+                tile = TILES[tile_index]
+                img.paste(tile.img, (x * 100, y * 100))
+                # draw tile index
+                # imageDraw.text(
+                #     (x * 100 + 10, y * 100 + 10), str(tile.index), fill="red"
+                # )
+                # draw x-y coordinates
+                imageDraw.text((x * 100 + 10, y * 100 + 80), f"{x}, {y}", fill="blue")
+
+        # draw line
+        for y in range(self.height):
+            imageDraw.line(
+                (0, y * 100, self.width * 100, y * 100), fill="black", width=1
+            )
+        for x in range(self.width):
+            imageDraw.line(
+                (x * 100, 0, x * 100, self.height * 100), fill="black", width=1
+            )
+
+        if carts is not None:
+            for cart in carts:
+                direction = cart.direction
+                imageDraw.ellipse(
+                    (
+                        cart.x * 100 + 30,
+                        cart.y * 100 + 30,
+                        cart.x * 100 + 70,
+                        cart.y * 100 + 70,
+                    ),
+                    fill="red",
+                    outline="red",
+                )
+
+                # draw direction line
+                if direction == DIRECTION.TOP:
+                    imageDraw.line(
+                        (
+                            cart.x * 100 + 50,
+                            cart.y * 100 + 50,
+                            cart.x * 100 + 50,
+                            cart.y * 100 + 30,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+                elif direction == DIRECTION.BOTTOM:
+                    imageDraw.line(
+                        (
+                            cart.x * 100 + 50,
+                            cart.y * 100 + 50,
+                            cart.x * 100 + 50,
+                            cart.y * 100 + 70,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+                elif direction == DIRECTION.LEFT:
+                    imageDraw.line(
+                        (
+                            cart.x * 100 + 50,
+                            cart.y * 100 + 50,
+                            cart.x * 100 + 30,
+                            cart.y * 100 + 50,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+                elif direction == DIRECTION.RIGHT:
+                    imageDraw.line(
+                        (
+                            cart.x * 100 + 50,
+                            cart.y * 100 + 50,
+                            cart.x * 100 + 70,
+                            cart.y * 100 + 50,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+
+                # draw order number on cart
+                imageDraw.text(
+                    (cart.x * 100 + 40, cart.y * 100 + 40),
+                    str(cart.order),
+                    fill="white",
+                )
+        return img
+
+    def get_image_with_highlighted_tiles(self, pos_to_highlight: list[tuple[int, int]]):
+        """
+        Generates an image representation of the railbound puzzle board with highlighted tiles.
+
+        Args:
+            pos_to_highlight (List[Tuple[int, int]]): A list of positions to highlight.
+
+        Returns:
+            PIL.Image.Image: The generated image.
+        """
+        img = self.get_image()
+        for x, y in pos_to_highlight:
+            self._highlight_tile(img, x, y)
+        return img
+
+    def _highlight_tile(self, img, x, y, color="red"):
+        imageDraw = ImageDraw.Draw(img)
+        imageDraw.rectangle(
+            (x * 100, y * 100, x * 100 + 100, y * 100 + 100),
+            outline=color,
+            width=2,
+        )
+
+    def get_possible_grid(
+        self, pos_to_place_tile: list[tuple[int, int]]
+    ) -> list["Grid"]:
+        """
+        Generates all possible grids by placing tiles on the board.
+
+        Args:
+            pos_to_place_tile (List[Tuple[int, int]]): A list of positions to place tiles.
+
+        Returns:
+            List[Grid]: A list of new grid configurations with tiles placed on the board.
+        """
+        tile_to_place_idx = [
+            tile.index
+            for tile in TILES
+            if tile.name == "Straight" or tile.name == "Curve" or tile.name == "T_turn"
+        ]
+        # Generate all possible combinations of tile placements
+        tile_combinations = itertools.product(
+            tile_to_place_idx, repeat=len(pos_to_place_tile)
+        )
+
+        possible_grids = []
+        for combination in tile_combinations:
+            new_grid = copy.deepcopy(self)
+            for (x, y), tile_idx in zip(pos_to_place_tile, combination):
+                new_grid[y][x] = tile_idx
+            if new_grid.is_grid_valid():
+                possible_grids.append(new_grid)
+
+        return possible_grids
+
+    def is_grid_valid(self):
+        """
+        Check if the grid configuration is valid.
+
+        Returns:
+            bool: True if the grid is valid, False otherwise.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = TILES[self.grid[y][x]]
+                if tile.name == "Empty":
+                    continue
+
+                for direction in DIRECTION:
+                    nx = x + DIRECTION_DELTA[direction][0]
+                    ny = y + DIRECTION_DELTA[direction][1]
+                    if nx < 0 or nx >= self.width or ny < 0 or ny >= self.height:
+                        if (
+                            tile.edges[direction] != 0
+                            and (x, y) not in self.freeze_tiles
+                        ):
+                            return False
+                        continue
+                    next_tile = TILES[self.grid[ny][nx]]
+                    if next_tile.name == "Empty":
+                        continue
+                    if not Tile.check_connection(tile, next_tile, direction):
+                        return False
+        return True
+
+    def simulate(self, carts: list[Cart]):
+        """
+        Simulate the movement of carts on the board.
+
+        Args:
+            carts (List[Cart]): A list of Cart objects representing the carts on the board.
+        """
+        empty_pos_reached = set()
+        while len(empty_pos_reached) == 0:
+            # update cart position and check for empty position reached
+            for cart in carts:
+                if cart.reached_destination:
+                    continue
+                cart_x, cart_y = cart.position
+                current_tile: Tile = TILES[self.grid[cart_y][cart_x]]
+                output_direction = current_tile.get_output_direction(cart.direction)
+                next_x = cart_x + DIRECTION_DELTA[output_direction][0]
+                next_y = cart_y + DIRECTION_DELTA[output_direction][1]
+                next_tile: Tile = TILES[self.grid[next_y][next_x]]
+                if next_tile.name == "Empty":
+                    empty_pos_reached.add((next_x, next_y))
+                cart.set_position((next_x, next_y))
+                cart.set_direction(output_direction)
+                if (next_x, next_y) == self.destination:
+                    cart.reached_destination = True
+            # check for collision
+            for cart in carts:
+                if cart.reached_destination:
+                    continue
+                # is cart run out of the board
+                if not (0 <= cart.x < self.width and 0 <= cart.y < self.height):
+                    return ("collision", "cart run out of the board")
+                if TILES[self.grid[cart.y][cart.x]].name == "Rock":
+                    return ("collision", "cart hit rock")
+                for other_cart in carts:
+                    if cart == other_cart:
+                        continue
+                    if cart.position == other_cart.position:
+                        return ("collision", "cart collision")
+                    if (
+                        cart.position == other_cart.previous_position
+                        and cart.previous_position == other_cart.position
+                    ):
+                        return ("collision", "cart collision")
+            # check if all carts reached destination
+            if all(cart.reached_destination for cart in carts):
+                return ("success", "all carts reached destination")
+        return ("empty_pos_reached", list(empty_pos_reached))
+
+
+if __name__ == "__main__":
+    test_data = [
+        [[5], [0], [0], [0], [5]],
+    ]
+    g = Grid(test_data, destination=(0, 0))
+    print("Original grid:")
+    print(g)
+
+    pos_to_place_tiles = [(1, 2), (1, 3)]
+    # find 2 random empty cells to place tiles
+    while len(pos_to_place_tiles) < 2:
+        x = np.random.randint(0, g.width)
+        y = np.random.randint(0, g.height)
+        if g[y][x] == 0:
+            pos_to_place_tiles.append((x, y))
+
+    img = g.get_image_with_highlighted_tiles(pos_to_place_tiles)
+    cv2.imshow("Grid", np.array(img))
+    cv2.waitKey(0)
+
+    possible_grids = g.get_possible_grid(pos_to_place_tiles)
+
+    print(f"\nNumber of possible grids: {len(possible_grids)}")
+    for i, grid in enumerate(possible_grids):  # Print first 5 grids as an example
+        print(f"\nPossible grid {i + 1}:")
+        print(grid)
+        img = grid.get_image_with_highlighted_tiles(pos_to_place_tiles)
+        cv2.imshow("Grid", np.array(img))
+        cv2.waitKey(0)

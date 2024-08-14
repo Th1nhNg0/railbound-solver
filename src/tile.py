@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 import cv2
 import numpy as np
 import itertools
-from utils import DIRECTION,  DIRECTION_TO_STR, OPPOSITE_DIRECTION
+from utils import DIRECTION, OPPOSITE_DIRECTION
 import os
 
 
@@ -14,7 +14,8 @@ class Tile:
     """
     A class to represent a tile in the game.
     """
-    __slots__ = ('name', 'img', 'edges', 'index', 'flow')
+
+    __slots__ = ("name", "img", "edges", "index", "flow")
     index_counter = itertools.count()
 
     def __init__(self, name, img, edges, flow):
@@ -36,7 +37,7 @@ class Tile:
         self.index = next(Tile.index_counter)
         self.flow = flow
 
-    def rotate(self, n) -> 'Tile':
+    def rotate(self, n) -> "Tile":
         """
         Create a new Tile instance with the rotated image and edges.
 
@@ -55,7 +56,7 @@ class Tile:
             flow.append((i, o))
         return Tile(self.name, rotated_img, rotated_edges, flow)
 
-    def flip(self, axes='vertical') -> 'Tile':
+    def flip(self, axes="vertical") -> "Tile":
         """
         Create a new Tile instance with the flipped image and edges.
 
@@ -65,10 +66,9 @@ class Tile:
         Returns:
             Tile: A new Tile instance with the flipped image and edges.
         """
-        if axes == 'vertical':
+        if axes == "vertical":
             flipped_img = self.img.transpose(Image.FLIP_TOP_BOTTOM)
-            flipped_edges = (
-                self.edges[2], self.edges[1], self.edges[0], self.edges[3])
+            flipped_edges = (self.edges[2], self.edges[1], self.edges[0], self.edges[3])
             flow = []
             for i, o in self.flow:
                 if i % 2 == 0:
@@ -76,10 +76,9 @@ class Tile:
                 if o % 2 == 0:
                     o = (o + 2) % 4
                 flow.append((i, o))
-        elif axes == 'horizontal':
+        elif axes == "horizontal":
             flipped_img = self.img.transpose(Image.FLIP_LEFT_RIGHT)
-            flipped_edges = (
-                self.edges[0], self.edges[3], self.edges[2], self.edges[1])
+            flipped_edges = (self.edges[0], self.edges[3], self.edges[2], self.edges[1])
             flow = []
             for i, o in self.flow:
                 if i % 2 == 1:
@@ -89,7 +88,7 @@ class Tile:
                 flow.append((i, o))
         return Tile(self.name, flipped_img, flipped_edges, flow)
 
-    @ property
+    @property
     def image_with_edge_indicators(self) -> Image:
         """
         Create a new image with the edge indicators. The edge indicators are
@@ -105,13 +104,10 @@ class Tile:
         draw = ImageDraw.Draw(img)
         # draw at center of each edge from top to left in clockwise order
         # the text should be inside the tile
-        draw.text((img.width // 2, 0), str(self.edges[0]), fill='black')
-        draw.text((img.width - 10, img.height // 2),
-                  str(self.edges[1]), fill='black')
-        draw.text((img.width // 2, img.height-10),
-                  str(self.edges[2]), fill='black')
-        draw.text((0, img.height // 2
-                   ), str(self.edges[3]), fill='black')
+        draw.text((img.width // 2, 0), str(self.edges[0]), fill="black")
+        draw.text((img.width - 10, img.height // 2), str(self.edges[1]), fill="black")
+        draw.text((img.width // 2, img.height - 10), str(self.edges[2]), fill="black")
+        draw.text((0, img.height // 2), str(self.edges[3]), fill="black")
         return img
 
     def get_output_direction(self, input_direction) -> int:
@@ -160,9 +156,8 @@ class Tile:
         return tile1.edges[tile1_edge_index] == tile2.edges[tile2_edge_index]
 
     def __repr__(self) -> str:
-        flow = ', '.join(
-            [f'({DIRECTION_TO_STR[i]}, {DIRECTION_TO_STR[o]})' for i, o in self.flow])
-        return f'{self.name}(index={self.index},edges={self.edges}),flow={flow})'
+        flow = ", ".join([f"({i.name}, {o.name})" for i, o in self.flow])
+        return f"{self.name}(index={self.index},edges={self.edges}),flow={flow})"
 
 
 def create_tiles() -> list[Tile]:
@@ -177,24 +172,41 @@ def create_tiles() -> list[Tile]:
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
     tiles = []
-    empty_tile = Tile('Empty', Image.open(os.path.join(
-        current_dir, './images/Empty.png')), (0, 0, 0, 0), [])
+    empty_tile = Tile(
+        "Empty",
+        Image.open(os.path.join(current_dir, "./images/Empty.png")),
+        (0, 0, 0, 0),
+        [],
+    )
 
-    curve_tile = Tile('Curve', Image.open(os.path.join(
-        current_dir, './images/Curve.png')),
-        (0, 1, 1, 0), [(DIRECTION.TOP, DIRECTION.RIGHT),
-                       (DIRECTION.LEFT, DIRECTION.BOTTOM)])
-    straight_tile = Tile('Straight', Image.open(os.path.join(
-        current_dir, './images/Straight.png')), (1, 0, 1, 0), [(DIRECTION.TOP, DIRECTION.TOP),
-                                                               (DIRECTION.BOTTOM, DIRECTION.BOTTOM)])
-    t_turn_tile = Tile('T_turn', Image.open(
-        os.path.join(current_dir,
-                     'images/T turn.png')), (1, 0, 1, 1),
-        [(DIRECTION.BOTTOM, DIRECTION.BOTTOM),
-         (DIRECTION.RIGHT, DIRECTION.BOTTOM),
-         (DIRECTION.TOP, DIRECTION.LEFT)])
-    rock_tile = Tile('Rock', Image.open(os.path.join(current_dir,
-                                                     './images/Rock.png')), (0, 0, 0, 0), [])
+    curve_tile = Tile(
+        "Curve",
+        Image.open(os.path.join(current_dir, "./images/Curve.png")),
+        (0, 1, 1, 0),
+        [(DIRECTION.TOP, DIRECTION.RIGHT), (DIRECTION.LEFT, DIRECTION.BOTTOM)],
+    )
+    straight_tile = Tile(
+        "Straight",
+        Image.open(os.path.join(current_dir, "./images/Straight.png")),
+        (1, 0, 1, 0),
+        [(DIRECTION.TOP, DIRECTION.TOP), (DIRECTION.BOTTOM, DIRECTION.BOTTOM)],
+    )
+    t_turn_tile = Tile(
+        "T_turn",
+        Image.open(os.path.join(current_dir, "images/T turn.png")),
+        (1, 0, 1, 1),
+        [
+            (DIRECTION.BOTTOM, DIRECTION.BOTTOM),
+            (DIRECTION.RIGHT, DIRECTION.BOTTOM),
+            (DIRECTION.TOP, DIRECTION.LEFT),
+        ],
+    )
+    rock_tile = Tile(
+        "Rock",
+        Image.open(os.path.join(current_dir, "./images/Rock.png")),
+        (0, 0, 0, 0),
+        [],
+    )
 
     tiles.append(empty_tile)
     tiles.append(curve_tile)
@@ -227,7 +239,9 @@ def create_tiles() -> list[Tile]:
     return tiles
 
 
-def curve_to_t_turn(curve_tile: Tile, direction: int, all_tiles: list[Tile]) -> Tile:
+def curve_to_t_turn(
+    curve_tile: Tile, direction: DIRECTION, all_tiles: list[Tile]
+) -> Tile:
     """
     Convert a curve tile to a T-Turn tile by changing one of the 0s to 1 in the specified direction
     and adding a straight flow for the new opening.
@@ -240,12 +254,11 @@ def curve_to_t_turn(curve_tile: Tile, direction: int, all_tiles: list[Tile]) -> 
     Returns:
         Tile: The corresponding T-Turn tile from all_tiles
     """
-    if 'Curve' not in curve_tile.name:
+    if "Curve" not in curve_tile.name:
         raise ValueError("The provided tile is not a Curve tile")
 
     if curve_tile.edges[direction] != 0:
-        raise ValueError(
-            f"The specified direction { DIRECTION_TO_STR[direction]} is already open")
+        raise ValueError(f"The specified direction {direction.name} is already open")
 
     # Create the new edges configuration
     new_edges = list(curve_tile.edges)
@@ -258,15 +271,22 @@ def curve_to_t_turn(curve_tile: Tile, direction: int, all_tiles: list[Tile]) -> 
     new_flow.append((opposite_direction, opposite_direction))
     # Find the matching T-Turn tile
     for tile in all_tiles:
-        if (tile.name == 'T_turn' and
-            tile.edges == new_edges and
-                set(tile.flow) == set(new_flow)):
+        if (
+            tile.name == "T_turn"
+            and tile.edges == new_edges
+            and set(tile.flow) == set(new_flow)
+        ):
             return tile
 
     raise ValueError("No matching T-Turn tile found in the provided tiles")
 
 
-def straight_to_t_turn(straight_tile: Tile, new_opening: int, cart_direction: int, all_tiles: list[Tile]) -> Tile:
+def straight_to_t_turn(
+    straight_tile: Tile,
+    new_opening: DIRECTION,
+    cart_direction: DIRECTION,
+    all_tiles: list[Tile],
+) -> Tile:
     """
     Convert a straight tile to a T-Turn tile by adding a new opening in the specified direction.
 
@@ -279,16 +299,21 @@ def straight_to_t_turn(straight_tile: Tile, new_opening: int, cart_direction: in
     Returns:
         Tile: The corresponding T-Turn tile from all_tiles
     """
-    if 'Straight' not in straight_tile.name:
+    if "Straight" not in straight_tile.name:
         raise ValueError("The provided tile is not a Straight tile")
 
     if straight_tile.edges[new_opening] != 0:
         raise ValueError(
-            f"The specified new opening direction {DIRECTION_TO_STR[new_opening]} is already open")
+            f"The specified new opening direction {new_opening.name} is already open"
+        )
 
-    if straight_tile.edges[cart_direction] != 1 or straight_tile.edges[OPPOSITE_DIRECTION[cart_direction]] != 1:
+    if (
+        straight_tile.edges[cart_direction] != 1
+        or straight_tile.edges[OPPOSITE_DIRECTION[cart_direction]] != 1
+    ):
         raise ValueError(
-            f"The specified cart direction {DIRECTION_TO_STR[cart_direction]} is not valid for this straight tile")
+            f"The specified cart direction {cart_direction.name} is not valid for this straight tile"
+        )
 
     # Create the new edges configuration
     new_edges = list(straight_tile.edges)
@@ -298,26 +323,29 @@ def straight_to_t_turn(straight_tile: Tile, new_opening: int, cart_direction: in
     # Determine the new flow
     existing_flow = (cart_direction, cart_direction)
     new_flow = [existing_flow]
-    new_flow.append(
-        (OPPOSITE_DIRECTION[cart_direction], new_opening))
+    new_flow.append((OPPOSITE_DIRECTION[cart_direction], new_opening))
     new_flow.append((OPPOSITE_DIRECTION[new_opening], cart_direction))
     # Find the matching T-Turn tile
     for tile in all_tiles:
-        if (tile.name == 'T_turn' and
-            tile.edges == new_edges and
-                set(tile.flow) == set(new_flow)):
+        if (
+            tile.name == "T_turn"
+            and tile.edges == new_edges
+            and set(tile.flow) == set(new_flow)
+        ):
             return tile
 
     raise ValueError("No matching T-Turn tile found in the provided tiles")
 
 
-if __name__ == '__main__':
+TILES = create_tiles()
+
+if __name__ == "__main__":
     # preview the tiles
     tiles = create_tiles()
     print(len(tiles))
     for tile in tiles:
         print(tile)
         # show the image in a window, scale the image 4 times
-        cv2.imshow('Tile', np.array(tile.image_with_edge_indicators))
+        cv2.imshow("Tile", np.array(tile.image_with_edge_indicators))
         cv2.waitKey(0)
     cv2.destroyAllWindows()
