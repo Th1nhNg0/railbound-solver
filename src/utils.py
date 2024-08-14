@@ -29,7 +29,7 @@ class TimingManager:
                 self.execution_times[full_operation_name].append(end_time - start_time)
                 self.current_operations.pop()
 
-    def print_averages(self):
+    def print(self):
         if not self.enabled:
             return
 

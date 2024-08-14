@@ -10,11 +10,12 @@ from cart import Cart
 
 
 class Grid:
-    def __init__(self, grid, destination, freeze_tiles=None):
+    def __init__(self, grid, destination, freeze_tiles=None, tile_placed_count=0):
         self.grid = grid
         self.height = len(grid)
         self.width = len(grid[0])
-        self.destination = destination
+        self.destination = tuple(destination)
+        self.tile_placed_count = tile_placed_count
         if freeze_tiles is None:
             self._create_freeze_tiles()
         else:
@@ -37,6 +38,7 @@ class Grid:
             grid=copy.copy(self.grid),
             destination=copy.copy(self.destination),
             freeze_tiles=copy.copy(self.freeze_tiles),
+            tile_placed_count=self.tile_placed_count,
         )
 
     def __deepcopy__(self, memo):
@@ -44,6 +46,7 @@ class Grid:
             grid=copy.deepcopy(self.grid),
             destination=copy.deepcopy(self.destination),
             freeze_tiles=copy.deepcopy(self.freeze_tiles),
+            tile_placed_count=self.tile_placed_count,
         )
 
     def _create_freeze_tiles(self):
@@ -207,6 +210,7 @@ class Grid:
             for (x, y), tile_idx in zip(pos_to_place_tile, combination):
                 new_grid[y][x] = tile_idx
             if new_grid.is_grid_valid():
+                new_grid.tile_placed_count += len(pos_to_place_tile)
                 possible_grids.append(new_grid)
 
         return possible_grids
@@ -241,7 +245,7 @@ class Grid:
                         return False
         return True
 
-    def simulate(self, carts: list[Cart]):
+    def simulate(self, carts: list[Cart], max_iter=100):
         """
         Simulate the movement of carts on the board.
 
@@ -249,7 +253,8 @@ class Grid:
             carts (List[Cart]): A list of Cart objects representing the carts on the board.
         """
         empty_pos_reached = set()
-        while len(empty_pos_reached) == 0:
+        while len(empty_pos_reached) == 0 and max_iter > 0:
+            max_iter -= 1
             # update cart position and check for empty position reached
             for cart in carts:
                 if cart.reached_destination:
@@ -259,11 +264,13 @@ class Grid:
                 output_direction = current_tile.get_output_direction(cart.direction)
                 next_x = cart_x + DIRECTION_DELTA[output_direction][0]
                 next_y = cart_y + DIRECTION_DELTA[output_direction][1]
-                next_tile: Tile = TILES[self.grid[next_y][next_x]]
-                if next_tile.name == "Empty":
-                    empty_pos_reached.add((next_x, next_y))
+
                 cart.set_position((next_x, next_y))
                 cart.set_direction(output_direction)
+                if (0 <= next_x < self.width) and (0 <= next_y < self.height):
+                    next_tile: Tile = TILES[self.grid[next_y][next_x]]
+                    if next_tile.name == "Empty":
+                        empty_pos_reached.add((next_x, next_y))
                 if (next_x, next_y) == self.destination:
                     cart.reached_destination = True
             # check for collision
@@ -285,9 +292,25 @@ class Grid:
                         and cart.previous_position == other_cart.position
                     ):
                         return ("collision", "cart collision")
+            # check if cart reached destination in order, ex: cart with order 1 should reach destination before cart with order 2
+            for cart in carts:
+                for other_cart in carts:
+                    if cart == other_cart:
+                        continue
+                    if cart.order > other_cart.order:
+                        if (
+                            cart.reached_destination
+                            and not other_cart.reached_destination
+                        ):
+                            return (
+                                "collision",
+                                "cart with lower order reached destination first",
+                            )
             # check if all carts reached destination
             if all(cart.reached_destination for cart in carts):
                 return ("success", "all carts reached destination")
+        if max_iter == 0:
+            return ("max_iter_reached", "max iteration reached")
         return ("empty_pos_reached", list(empty_pos_reached))
 
 
