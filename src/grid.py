@@ -67,93 +67,66 @@ class Grid:
             PIL.Image.Image: The generated image.
 
         """
-        img = Image.new("RGB", (self.width * 100, self.height * 100), color="white")
+        img = Image.new("RGB", (self.width * 90, self.height * 90), color="white")
         imageDraw = ImageDraw.Draw(img)
         for y in range(self.height):
             for x in range(self.width):
                 tile_index = self.grid[y][x]
                 tile = TILES[tile_index]
-                img.paste(tile.img, (x * 100, y * 100))
-                # draw tile index
-                # imageDraw.text(
-                #     (x * 100 + 10, y * 100 + 10), str(tile.index), fill="red"
-                # )
+                img.paste(tile.img, (x * 90, y * 90))
                 # draw x-y coordinates
-                imageDraw.text((x * 100 + 10, y * 100 + 80), f"{x}, {y}", fill="blue")
+                imageDraw.text((x * 90 + 5, y * 90 + 75), f"{x}, {y}", fill="white")
 
-        # draw line
-        for y in range(self.height):
-            imageDraw.line(
-                (0, y * 100, self.width * 100, y * 100), fill="black", width=1
-            )
-        for x in range(self.width):
-            imageDraw.line(
-                (x * 100, 0, x * 100, self.height * 100), fill="black", width=1
-            )
+        # draw grid lines
+        for y in range(self.height + 1):
+            imageDraw.line((0, y * 90, self.width * 90, y * 90), fill="black", width=1)
+        for x in range(self.width + 1):
+            imageDraw.line((x * 90, 0, x * 90, self.height * 90), fill="black", width=1)
 
         if carts is not None:
             for cart in carts:
                 direction = cart.direction
                 imageDraw.ellipse(
                     (
-                        cart.x * 100 + 30,
-                        cart.y * 100 + 30,
-                        cart.x * 100 + 70,
-                        cart.y * 100 + 70,
+                        cart.x * 90 + 25,
+                        cart.y * 90 + 25,
+                        cart.x * 90 + 65,
+                        cart.y * 90 + 65,
                     ),
                     fill="red",
                     outline="red",
                 )
 
                 # draw direction line
+                center_x, center_y = cart.x * 90 + 45, cart.y * 90 + 45
                 if direction == DIRECTION.TOP:
                     imageDraw.line(
-                        (
-                            cart.x * 100 + 50,
-                            cart.y * 100 + 50,
-                            cart.x * 100 + 50,
-                            cart.y * 100 + 30,
-                        ),
+                        (center_x, center_y, center_x, center_y - 20),
                         fill="black",
                         width=2,
                     )
                 elif direction == DIRECTION.BOTTOM:
                     imageDraw.line(
-                        (
-                            cart.x * 100 + 50,
-                            cart.y * 100 + 50,
-                            cart.x * 100 + 50,
-                            cart.y * 100 + 70,
-                        ),
+                        (center_x, center_y, center_x, center_y + 20),
                         fill="black",
                         width=2,
                     )
                 elif direction == DIRECTION.LEFT:
                     imageDraw.line(
-                        (
-                            cart.x * 100 + 50,
-                            cart.y * 100 + 50,
-                            cart.x * 100 + 30,
-                            cart.y * 100 + 50,
-                        ),
+                        (center_x, center_y, center_x - 20, center_y),
                         fill="black",
                         width=2,
                     )
                 elif direction == DIRECTION.RIGHT:
                     imageDraw.line(
-                        (
-                            cart.x * 100 + 50,
-                            cart.y * 100 + 50,
-                            cart.x * 100 + 70,
-                            cart.y * 100 + 50,
-                        ),
+                        (center_x, center_y, center_x + 20, center_y),
                         fill="black",
                         width=2,
                     )
 
                 # draw order number on cart
                 imageDraw.text(
-                    (cart.x * 100 + 40, cart.y * 100 + 40),
+                    (cart.x * 90 + 35, cart.y * 90 + 35),
                     str(cart.order),
                     fill="white",
                 )
@@ -177,7 +150,7 @@ class Grid:
     def _highlight_tile(self, img, x, y, color="red"):
         imageDraw = ImageDraw.Draw(img)
         imageDraw.rectangle(
-            (x * 100, y * 100, x * 100 + 100, y * 100 + 100),
+            (x * 90, y * 90, x * 90 + 90, y * 90 + 90),
             outline=color,
             width=2,
         )
