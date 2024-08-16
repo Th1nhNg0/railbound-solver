@@ -7,5 +7,6 @@
     [0, 0, 5, 0, 0]
   ],
   "destination": [2, 0],
-  "carts": [{ "x": 2, "y": 4, "direction": 0, "order": 1 }]
+  "carts": [{ "x": 2, "y": 4, "direction": 0, "order": 1 }],
+  "max_tracks": 4
 }

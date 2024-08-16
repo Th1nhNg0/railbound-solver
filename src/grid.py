@@ -207,6 +207,33 @@ class Grid:
                     return False
         return True
 
+    def is_grid_valid(self):
+        """
+        Check if the grid configuration is valid.
+
+        Returns:
+            bool: True if the grid is valid, False otherwise.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = TILES[self.grid[y][x]]
+                for direction in DIRECTION:
+                    nx = x + DIRECTION_DELTA[direction][0]
+                    ny = y + DIRECTION_DELTA[direction][1]
+                    if nx < 0 or nx >= self.width or ny < 0 or ny >= self.height:
+                        if (
+                            tile.edges[direction] != 0
+                            and (x, y) not in self.freeze_tiles
+                        ):
+                            return False
+                        continue
+                    next_tile = TILES[self.grid[ny][nx]]
+                    if next_tile.name == "Empty":
+                        continue
+                    if not Tile.check_connection(tile, next_tile, direction):
+                        return False
+        return True
+
     def simulate(self, carts: list[Cart], max_iter=100):
         """
         Simulate the movement of carts on the board.
