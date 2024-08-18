@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Union, List
 import numpy as np
+import copy
 
 
 @dataclass
@@ -49,8 +50,11 @@ class Grid:
             return NotImplemented
         return np.array_equal(self.data, other.data)
 
-    def clone(self) -> "Grid":
-        return Grid(self.data.copy())
+    def __copy__(self):
+        return Grid(copy.copy(self.data))
+
+    def __deepcopy__(self, memo):
+        return Grid(copy.deepcopy(self.data, memo))
 
 
 if __name__ == "__main__":
@@ -65,16 +69,3 @@ if __name__ == "__main__":
     grid_from_np = Grid(np_array)
     print(grid_from_np)
     print(f"Hash: {hash(grid_from_np)}")
-
-    print("\nCloning and modifying:")
-    cloned = grid_from_list.clone()
-    cloned.set(1, 1, 0)
-    print("Original:")
-    print(grid_from_list)
-    print("Modified clone:")
-    print(cloned)
-    print(f"Original == Clone: {grid_from_list == cloned}")
-
-    print("\nComparing grids:")
-    another_grid = Grid([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    print(f"grid_from_list == another_grid: {grid_from_list == another_grid}")
