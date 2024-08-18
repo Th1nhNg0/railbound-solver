@@ -18,7 +18,7 @@ For more information about the original game, visit [the official Railbound webs
 - **Automated Solver**: An algorithm that can find solutions to the recreated puzzles.
 - **Customizable Grid**: Adjustable grid size to accommodate various puzzle complexities.
 - **Multiple Tile Types**: Support for different track types, including straight tracks, curves, and T-junctions.
-- **Cart Placement**: Ability to place and rotate carts on the grid.
+- **Cart Placement**: Ability to place and rotate trains on the grid.
 - **Save/Load Functionality**: Save your recreated puzzles and load them later for solving or further editing.
 
 ## Requirements
@@ -56,7 +56,7 @@ python editor.py
 - Use the grid size controls to set up your puzzle board.
 - Select tiles from the dropdown menu and click on the grid to place them.
 - Use the "Set Destination" button to mark the goal location.
-- Toggle "Cart Place Mode" to add carts to your puzzle.
+- Toggle "Cart Place Mode" to add trains to your puzzle.
 - Save your created puzzle using the "Save Grid" button.
 
 ### Puzzle Solver
@@ -71,7 +71,7 @@ Replace `path/to/your/puzzle.json` with the path to the JSON file of the puzzle 
 
 ## How It Works
 
-The solver uses a breadth-first search algorithm to explore possible track configurations. It places tracks, moves carts, and backtracks when necessary to find a valid solution that allows all carts to reach the destination.
+The solver uses a breadth-first search algorithm to explore possible track configurations. It places tracks, moves trains, and backtracks when necessary to find a valid solution that allows all trains to reach the destination.
 
 ## Current Status and TODO List
 

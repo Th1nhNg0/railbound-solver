@@ -93,6 +93,79 @@ class Tile(IntEnum):
     def is_t_turn(cls, tile):
         return tile in cls.t_turn_tiles()
 
+    def get_output_direction(self, input_direction) -> Direction:
+        flow_direction = {
+            Tile.EMPTY: {},
+            Tile.CURVE_BR: {
+                Direction.TOP: Direction.RIGHT,
+                Direction.LEFT: Direction.BOTTOM,
+            },
+            Tile.CURVE_BL: {
+                Direction.TOP: Direction.LEFT,
+                Direction.RIGHT: Direction.BOTTOM,
+            },
+            Tile.CURVE_TL: {
+                Direction.RIGHT: Direction.TOP,
+                Direction.BOTTOM: Direction.LEFT,
+            },
+            Tile.CURVE_TR: {
+                Direction.LEFT: Direction.TOP,
+                Direction.BOTTOM: Direction.RIGHT,
+            },
+            Tile.STRAIGHT_V: {
+                Direction.TOP: Direction.TOP,
+                Direction.BOTTOM: Direction.BOTTOM,
+            },
+            Tile.STRAIGHT_H: {
+                Direction.RIGHT: Direction.RIGHT,
+                Direction.LEFT: Direction.LEFT,
+            },
+            Tile.T_TURN_VBL: {
+                Direction.TOP: Direction.LEFT,
+                Direction.BOTTOM: Direction.BOTTOM,
+                Direction.RIGHT: Direction.BOTTOM,
+            },
+            Tile.T_TURN_HLT: {
+                Direction.BOTTOM: Direction.LEFT,
+                Direction.RIGHT: Direction.TOP,
+                Direction.LEFT: Direction.LEFT,
+            },
+            Tile.T_TURN_VTR: {
+                Direction.TOP: Direction.TOP,
+                Direction.BOTTOM: Direction.RIGHT,
+                Direction.LEFT: Direction.TOP,
+            },
+            Tile.T_TURN_HBR: {
+                Direction.TOP: Direction.RIGHT,
+                Direction.RIGHT: Direction.RIGHT,
+                Direction.LEFT: Direction.BOTTOM,
+            },
+            Tile.T_TURN_VTL: {
+                Direction.TOP: Direction.TOP,
+                Direction.RIGHT: Direction.TOP,
+                Direction.BOTTOM: Direction.LEFT,
+            },
+            Tile.T_TURN_HRT: {
+                Direction.BOTTOM: Direction.RIGHT,
+                Direction.LEFT: Direction.TOP,
+                Direction.RIGHT: Direction.RIGHT,
+            },
+            Tile.T_TURN_VRB: {
+                Direction.BOTTOM: Direction.BOTTOM,
+                Direction.TOP: Direction.RIGHT,
+                Direction.LEFT: Direction.BOTTOM,
+            },
+            Tile.T_TURN_HLB: {
+                Direction.TOP: Direction.LEFT,
+                Direction.LEFT: Direction.LEFT,
+                Direction.RIGHT: Direction.BOTTOM,
+            },
+            Tile.FENCE: {},
+        }
+        if input_direction not in flow_direction[self]:
+            return -1
+        return flow_direction[self][input_direction]
+
     def get_connection_direction(self):
         result = {
             Direction.TOP: False,

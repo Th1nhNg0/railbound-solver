@@ -6,7 +6,7 @@
     [5, 0, 5]
   ],
   "destination": [0, 0],
-  "carts": [
+  "trains": [
     {
       "x": 0,
       "y": 3,
