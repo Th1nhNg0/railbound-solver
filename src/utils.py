@@ -1,9 +1,7 @@
-import json
 import time
 from collections import defaultdict
 from contextlib import contextmanager
 from statistics import mean
-from enum import IntEnum
 
 
 class TimingManager:
@@ -62,31 +60,3 @@ class TimingManager:
 
     def reset(self):
         self.execution_times = defaultdict(list)
-
-
-def load_grid(file_path):
-    with open(file_path, "r") as f:
-        data = json.load(f)
-    return data["grid"], data["destination"] if data["destination"] else None
-
-
-class DIRECTION(IntEnum):
-    TOP = 0
-    RIGHT = 1
-    BOTTOM = 2
-    LEFT = 3
-
-
-DIRECTION_DELTA = {
-    DIRECTION.TOP: (0, -1),
-    DIRECTION.RIGHT: (1, 0),
-    DIRECTION.BOTTOM: (0, 1),
-    DIRECTION.LEFT: (-1, 0),
-}
-
-OPPOSITE_DIRECTION = {
-    DIRECTION.TOP: DIRECTION.BOTTOM,
-    DIRECTION.RIGHT: DIRECTION.LEFT,
-    DIRECTION.BOTTOM: DIRECTION.TOP,
-    DIRECTION.LEFT: DIRECTION.RIGHT,
-}

@@ -1,310 +1,105 @@
-"""
-This module contains the Tile class that represents a tile in the game.
-"""
-
-from PIL import Image, ImageDraw
-import itertools
-from utils import DIRECTION, OPPOSITE_DIRECTION
-import os
+from enum import IntEnum
+from typing import NamedTuple
 
 
-class Tile:
-    """
-    A class to represent a tile in the game.
-    """
+class Position(NamedTuple):
+    x: int
+    y: int
 
-    __slots__ = ("name", "img", "edges", "index", "flow")
-    index_counter = itertools.count()
+    def __add__(self, other: "Position") -> "Position":
+        return Position(self.x + other.x, self.y + other.y)
 
-    def __init__(self, name, img, edges, flow):
-        """
-        Initialize a new instance of the class.
+    def __sub__(self, other: "Position") -> "Position":
+        return Position(self.x - other.x, self.y - other.y)
 
-        Args:
-            name (str): The name of the tile.
-            img (PIL.Image): The input image.
-            edges (tuple of 4 ints): (top, right, bottom, left) edges of the tile.  When 2 edge on different tiles have the same value, they can be connected.
-            flow (list of tuple of 2 ints): (i, o) i represents the direction of the object when it enters the tile, o represents the direction the object will exit the tile.
 
-        Returns:
-            None
-        """
-        self.name = name
-        self.img = img
-        self.edges = edges
-        self.index = next(Tile.index_counter)
-        self.flow = flow
-
-    def rotate(self, n) -> "Tile":
-        """
-        Create a new Tile instance with the rotated image and edges.
-
-        Args:
-            n (int): The number of rotations.
-
-        Returns:
-            Tile: A new Tile instance with the rotated image and edges.
-        """
-        rotated_img = self.img.rotate(n * -90)
-        rotated_edges = self.edges[-n:] + self.edges[:-n]
-        flow = []
-        for i, o in self.flow:
-            i = DIRECTION((i + n) % 4)
-            o = DIRECTION((o + n) % 4)
-            flow.append((i, o))
-        return Tile(self.name, rotated_img, rotated_edges, flow)
-
-    def flip(self, axes="vertical") -> "Tile":
-        """
-        Create a new Tile instance with the flipped image and edges.
-
-        Args:
-            axes (str): The axes to flip the image. vertical or horizontal.
-
-        Returns:
-            Tile: A new Tile instance with the flipped image and edges.
-        """
-        if axes == "vertical":
-            flipped_img = self.img.transpose(Image.FLIP_TOP_BOTTOM)
-            flipped_edges = (self.edges[2], self.edges[1], self.edges[0], self.edges[3])
-            flow = []
-            for i, o in self.flow:
-                if i % 2 == 0:
-                    i = DIRECTION((i + 2) % 4)
-                if o % 2 == 0:
-                    o = DIRECTION((o + 2) % 4)
-                flow.append((i, o))
-        elif axes == "horizontal":
-            flipped_img = self.img.transpose(Image.FLIP_LEFT_RIGHT)
-            flipped_edges = (self.edges[0], self.edges[3], self.edges[2], self.edges[1])
-            flow = []
-            for i, o in self.flow:
-                if i % 2 == 1:
-                    i = DIRECTION((i + 2) % 4)
-                if o % 2 == 1:
-                    o = DIRECTION((o + 2) % 4)
-                flow.append((i, o))
-        return Tile(self.name, flipped_img, flipped_edges, flow)
+class DIRECTION(IntEnum):
+    TOP, RIGHT, BOTTOM, LEFT = range(4)
 
     @property
-    def image_with_edge_indicators(self) -> Image:
-        """
-        Create a new image with the edge indicators. The edge indicators are
-        drawn as text on the edges of the tile.
+    def delta(self):
+        return {
+            DIRECTION.TOP: Position(0, -1),
+            DIRECTION.RIGHT: Position(1, 0),
+            DIRECTION.BOTTOM: Position(0, 1),
+            DIRECTION.LEFT: Position(-1, 0),
+        }[self]
 
-        Args:
-            None
-
-        Returns:
-            Image: A new image with the edge indicators.
-        """
-        img = self.img.copy()
-        draw = ImageDraw.Draw(img)
-        # draw at center of each edge from top to left in clockwise order
-        # the text should be inside the tile
-        draw.text((img.width // 2, 0), str(self.edges[0]), fill="black")
-        draw.text((img.width - 10, img.height // 2), str(self.edges[1]), fill="black")
-        draw.text((img.width // 2, img.height - 10), str(self.edges[2]), fill="black")
-        draw.text((0, img.height // 2), str(self.edges[3]), fill="black")
-        return img
-
-    def get_output_direction(self, input_direction) -> int:
-        """
-        Get the output direction based on the input direction.
-
-        Args:
-            input_direction (int): The input direction.
-
-        Returns:
-            int: The output direction.
-        """
-        for i, o in self.flow:
-            if i == input_direction:
-                return o
-        return -1
-
-    @staticmethod
-    def check_connection(tile1, tile2, direction):
-        """
-        Check if two tiles can be connected.
-        The tile1 is the original, tile2 is the target tile.
-        Direction is the direction of tile2 relative to tile1.
-
-        Args:
-            tile1 (Tile): The original tile
-            tile2 (Tile): The target tile
-            direction (int): The direction of tile2 relative to tile1 (use DIRECTION constants)
-
-        Returns:
-            bool: True if the tiles can be connected, False otherwise
-
-        Example:
-        tile1 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0),
-                     [(DIRECTION.TOP, DIRECTION.RIGHT), (DIRECTION.LEFT, DIRECTION.BOTTOM)])
-        tile2 = Tile('Curve', Image.open('images/Curve.png'), (0, 1, 1, 0),
-                     [(DIRECTION.TOP, DIRECTION.RIGHT), (DIRECTION.LEFT, DIRECTION.BOTTOM)])
-        Tile.check_connection(tile1, tile2, DIRECTION.RIGHT)
-        Means: check if the right edge of tile1 can be connected to the left edge of tile2.
-        """
-        # Get the edge indices for the connecting sides
-        tile1_edge_index = direction
-        tile2_edge_index = OPPOSITE_DIRECTION[direction]
-
-        # Check if the edges match
-        return tile1.edges[tile1_edge_index] == tile2.edges[tile2_edge_index]
-
-    def __repr__(self) -> str:
-        flow = ", ".join([f"({i.name}, {o.name})" for i, o in self.flow])
-        return f"{self.name}(index={self.index},edges={self.edges}),flow={flow})"
+    @property
+    def opposite(self):
+        return DIRECTION((self + 2) % 4)
 
 
-def create_tiles() -> list[Tile]:
-    """
-    Create a list of tiles with different shapes and orientations.
+class TileName(IntEnum):
+    EMPTY = 0
+    CURVE_BR = 1
+    CURVE_RB = 1  # same as CURVE_BR
+    CURVE_BL = 2
+    CURVE_LB = 2  # same as CURVE_BL
+    CURVE_TL = 3
+    CURVE_LT = 3  # same as CURVE_TL
+    CURVE_TR = 4
+    CURVE_RT = 4  # same as CURVE_TR
 
-    Args:
-        None
+    STRAIGHT_V = 5
+    STRAIGHT_H = 6
 
-    Returns:
-        list: A list of tiles with different shapes and orientations
-    """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    tiles = []
-    empty_tile = Tile(
-        "Empty",
-        Image.open(os.path.join(current_dir, "./images/Empty.png")),
-        (0, 0, 0, 0),
-        [],
-    )
+    T_TURN_VBL = 7
+    T_TURN_VLB = 7  # same as T_TURN_V_BL
+    T_TURN_HLT = 8
+    T_TURN_HTL = 8  # same as T_TURN_H_LT
+    T_TURN_VTR = 9
+    T_TURN_VRT = 9  # same as T_TURN
+    T_TURN_HBR = 10
+    T_TURN_HRB = 10  # same as T_TURN_H_BR
+    T_TURN_VTL = 11
+    T_TURN_VLT = 11  # same as T_TURN_V_TL
+    T_TURN_HRT = 12
+    T_TURN_HTR = 12  # same as T_TURN_H_RT
+    T_TURN_VRB = 13
+    T_TURN_VBR = 13  # same as T_TURN_V_RB
+    T_TURN_HLB = 14
+    T_TURN_HBL = 14  # same as T_TURN_H_LB
 
-    curve_tile = Tile(
-        "Curve",
-        Image.open(os.path.join(current_dir, "./images/Curve.png")),
-        (0, 1, 1, 0),
-        [(DIRECTION.TOP, DIRECTION.RIGHT), (DIRECTION.LEFT, DIRECTION.BOTTOM)],
-    )
-    straight_tile = Tile(
-        "Straight",
-        Image.open(os.path.join(current_dir, "./images/Straight.png")),
-        (1, 0, 1, 0),
-        [(DIRECTION.TOP, DIRECTION.TOP), (DIRECTION.BOTTOM, DIRECTION.BOTTOM)],
-    )
-    t_turn_tile = Tile(
-        "T_turn",
-        Image.open(os.path.join(current_dir, "images/T turn.png")),
-        (1, 0, 1, 1),
-        [
-            (DIRECTION.BOTTOM, DIRECTION.BOTTOM),
-            (DIRECTION.RIGHT, DIRECTION.BOTTOM),
-            (DIRECTION.TOP, DIRECTION.LEFT),
-        ],
-    )
-    rock_tile = Tile(
-        "Rock",
-        Image.open(os.path.join(current_dir, "./images/Rock.png")),
-        (0, 0, 0, 0),
-        [],
-    )
+    FENCE = 15
 
-    tiles.append(empty_tile)
-    tiles.append(curve_tile)
-    tiles.append(curve_tile.rotate(1))
-    tiles.append(curve_tile.rotate(2))
-    tiles.append(curve_tile.rotate(3))
-    tiles.append(straight_tile)
-    tiles.append(straight_tile.rotate(1))
-    tiles.append(t_turn_tile)
-    tiles.append(t_turn_tile.rotate(1))
-    tiles.append(t_turn_tile.rotate(2))
-    tiles.append(t_turn_tile.rotate(3))
-    tiles.append(t_turn_tile.flip())
-    tiles.append(t_turn_tile.flip().rotate(1))
-    tiles.append(t_turn_tile.flip().rotate(2))
-    tiles.append(t_turn_tile.flip().rotate(3))
+    @classmethod
+    def curve_tiles(cls):
+        return [
+            cls.CURVE_BR,
+            cls.CURVE_BL,
+            cls.CURVE_TL,
+            cls.CURVE_TR,
+        ]
 
-    tiles.append(rock_tile)
+    @classmethod
+    def straight_tiles(cls):
+        return [
+            cls.STRAIGHT_V,
+            cls.STRAIGHT_H,
+        ]
 
-    # tiles.append(dead_end)
-    # tiles.append(dead_end.rotate(1))
-    # tiles.append(dead_end.rotate(2))
-    # tiles.append(dead_end.rotate(3))
-    # override the index of each tile for easy reference
-    index = 0
-    for tile in tiles:
-        tile.index = index
-        index += 1
+    @classmethod
+    def t_turn_tiles(cls):
+        return [
+            cls.T_TURN_VBL,
+            cls.T_TURN_HLT,
+            cls.T_TURN_VTR,
+            cls.T_TURN_HBR,
+            cls.T_TURN_VTL,
+            cls.T_TURN_HRT,
+            cls.T_TURN_VRB,
+            cls.T_TURN_HLB,
+        ]
 
-    return tiles
+    @classmethod
+    def is_curve(cls, tile):
+        return tile in cls.curve_tiles()
 
+    @classmethod
+    def is_straight(cls, tile):
+        return tile in cls.straight_tiles()
 
-def find_possible_tiles(grid, row, col):
-    """
-    Find all possible tiles that can be placed at a specific position in the grid.
-
-    Args:
-        grid (List[List[int]]): The grid of tile indices
-        row (int): The row index of the position to check
-        col (int): The column index of the position to check
-        all_tiles (List[Tile]): List of all available tiles
-
-    Returns:
-        List[int]: List of indices of compatible tiles
-    """
-    height = len(grid)
-    width = len(grid[0]) if grid else 0
-    # make sure row and col are within the grid
-    if row < 0 or row >= height or col < 0 or col >= width:
-        return []
-    # Get adjacent tile indices
-    top = grid[row - 1][col] if row > 0 else None
-    right = grid[row][col + 1] if col < width - 1 else None
-    bottom = grid[row + 1][col] if row < height - 1 else None
-    left = grid[row][col - 1] if col > 0 else None
-
-    # Get edges of adjacent tiles
-    top_edge = TILES[top].edges[2] if top is not None else 0
-    right_edge = TILES[right].edges[3] if right is not None else 0
-    bottom_edge = TILES[bottom].edges[0] if bottom is not None else 0
-    left_edge = TILES[left].edges[1] if left is not None else 0
-
-    top_edge = None if top == 0 else top_edge
-    right_edge = None if right == 0 else right_edge
-    bottom_edge = None if bottom == 0 else bottom_edge
-    left_edge = None if left == 0 else left_edge
-
-    compatible_tiles = []
-
-    for tile in TILES:
-        if (
-            (top_edge is None or tile.edges[0] == top_edge)
-            and (right_edge is None or tile.edges[1] == right_edge)
-            and (bottom_edge is None or tile.edges[2] == bottom_edge)
-            and (left_edge is None or tile.edges[3] == left_edge)
-        ):
-            compatible_tiles.append(tile.index)
-
-    return compatible_tiles
-
-
-TILES = create_tiles()
-
-
-if __name__ == "__main__":
-    grid =     [
-        [0, 0, 5, 0, 0],
-        [0, 1, 8, 2, 0],
-        [0, 0, 15, 0, 0],
-        [0, 4, 6, 3, 0],
-        [5, 0, 0, 0, 5],
-    ]
-    # Example usage
-    row = 0  # Choose the row you want to check
-    col = 2  # Choose the column you want to check
-
-    possible_tiles = find_possible_tiles(grid, row, col)
-
-    print(f"Possible tiles for position ({row}, {col}): {possible_tiles}")
-    for tile_index in possible_tiles:
-        # print all possible grid with the possible tiles
-        grid[row][col] = tile_index
-        print(grid, ",")
+    @classmethod
+    def is_t_turn(cls, tile):
+        return tile in cls.t_turn_tiles()
