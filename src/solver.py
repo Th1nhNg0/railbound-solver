@@ -281,9 +281,9 @@ def solve(data: dict):
     state = State(grid, trains, Position(*data["destination"]))
 
     queue = deque([state])
-    img = drawer.draw(state.grid)
-    cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
-    cv2.waitKey(1000)
+    # img = drawer.draw(state.grid)
+    # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
+    # cv2.waitKey(1000)
 
     timer.reset()
     visited = set()
@@ -322,9 +322,9 @@ def solve(data: dict):
                     print(f"Best State: {state.placed_tiles}")
                     best_state = state
                     best_min_placed_tiles = state.placed_tiles
-                    img = drawer.draw(state.grid)
-                    cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
-                    cv2.waitKey(1000)
+                    # img = drawer.draw(state.grid)
+                    # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
+                    # cv2.waitKey(1000)
     print("=" * 50, "\n")
     print(f"Finished in {iteration} iterations")
     timer.print()
@@ -336,5 +336,5 @@ def solve(data: dict):
 
 
 if __name__ == "__main__":
-    data = load_data("./src/levels/1-13A.json")
+    data = load_data("./src/levels/1-11A.json")
     solve(data)

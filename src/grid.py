@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 from typing import Union, List
 import numpy as np
+from tile import Direction
+from collections import defaultdict
 import copy
 
 
 @dataclass
 class Grid:
     data: Union[List[List[int]], np.ndarray]
+    flows: dict = None
 
     def __post_init__(self):
         if isinstance(self.data, list):
@@ -24,6 +27,8 @@ class Grid:
             self.data = self.data.astype(int)
         else:
             raise TypeError("Input must be either a 2D list or a NumPy array")
+        if self.flows is None:
+            self.flows = defaultdict(lambda: defaultdict(bool))
 
     def get(self, x: int, y: int) -> int:
         if 0 <= x < self.width and 0 <= y < self.height:
@@ -33,6 +38,17 @@ class Grid:
     def set(self, x: int, y: int, value: int) -> None:
         if 0 <= x < self.width and 0 <= y < self.height:
             self.data[y, x] = value
+        else:
+            raise IndexError("Coordinates out of bounds")
+
+    def get_flow(self, x: int, y: int) -> dict:
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.flows[(x, y)]
+        raise IndexError("Coordinates out of bounds")
+
+    def add_flow(self, x: int, y: int, direction: Direction) -> None:
+        if 0 <= x < self.width and 0 <= y < self.height:
+            self.flows[(x, y)][direction] = True
         else:
             raise IndexError("Coordinates out of bounds")
 
@@ -51,10 +67,10 @@ class Grid:
         return np.array_equal(self.data, other.data)
 
     def __copy__(self):
-        return Grid(copy.copy(self.data))
+        return Grid(copy.copy(self.data), copy.copy(self.flows))
 
     def __deepcopy__(self, memo):
-        return Grid(copy.deepcopy(self.data, memo))
+        return Grid(copy.deepcopy(self.data, memo), copy.deepcopy(self.flows, memo))
 
 
 if __name__ == "__main__":
