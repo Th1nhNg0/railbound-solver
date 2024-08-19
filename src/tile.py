@@ -52,46 +52,34 @@ class Tile(IntEnum):
 
     FENCE = 15
 
-    @classmethod
-    def curve_tiles(cls):
-        return [
-            cls.CURVE_BR,
-            cls.CURVE_BL,
-            cls.CURVE_TL,
-            cls.CURVE_TR,
-        ]
+    @property
+    def is_curve(self):
+        return self in {
+            Tile.CURVE_BR,
+            Tile.CURVE_BL,
+            Tile.CURVE_TL,
+            Tile.CURVE_TR,
+        }
 
-    @classmethod
-    def straight_tiles(cls):
-        return [
-            cls.STRAIGHT_V,
-            cls.STRAIGHT_H,
-        ]
+    @property
+    def is_straight(self):
+        return self in {
+            Tile.STRAIGHT_V,
+            Tile.STRAIGHT_H,
+        }
 
-    @classmethod
-    def t_turn_tiles(cls):
-        return [
-            cls.T_TURN_VBL,
-            cls.T_TURN_HLT,
-            cls.T_TURN_VTR,
-            cls.T_TURN_HBR,
-            cls.T_TURN_VTL,
-            cls.T_TURN_HRT,
-            cls.T_TURN_VRB,
-            cls.T_TURN_HLB,
-        ]
-
-    @classmethod
-    def is_curve(cls, tile):
-        return tile in cls.curve_tiles()
-
-    @classmethod
-    def is_straight(cls, tile):
-        return tile in cls.straight_tiles()
-
-    @classmethod
-    def is_t_turn(cls, tile):
-        return tile in cls.t_turn_tiles()
+    @property
+    def is_t_turn(self):
+        return self in {
+            Tile.T_TURN_VBL,
+            Tile.T_TURN_HLT,
+            Tile.T_TURN_VTR,
+            Tile.T_TURN_HBR,
+            Tile.T_TURN_VTL,
+            Tile.T_TURN_HRT,
+            Tile.T_TURN_VRB,
+            Tile.T_TURN_HLB,
+        }
 
     def get_output_direction(self, input_direction) -> Direction:
         flow_direction = {
@@ -193,6 +181,57 @@ class Tile(IntEnum):
             result[Direction.RIGHT] = True
         return result
 
+    def to_t_turn(self, direction: Direction, direction_flow: Direction | None = None):
+        # direction is direction to connect
+        # direction_flow is direction of the straight way
+        transform_dict = {
+            Tile.CURVE_BL: {
+                Direction.TOP: Tile.T_TURN_VBL,
+                Direction.RIGHT: Tile.T_TURN_HLB,
+            },
+            Tile.CURVE_BR: {
+                Direction.TOP: Tile.T_TURN_VRB,
+                Direction.LEFT: Tile.T_TURN_HBR,
+            },
+            Tile.CURVE_TL: {
+                Direction.RIGHT: Tile.T_TURN_HLT,
+                Direction.BOTTOM: Tile.T_TURN_VTL,
+            },
+            Tile.CURVE_TR: {
+                Direction.LEFT: Tile.T_TURN_HRT,
+                Direction.BOTTOM: Tile.T_TURN_VTR,
+            },
+            Tile.STRAIGHT_H: {
+                Direction.RIGHT: {
+                    Direction.TOP: Tile.T_TURN_HRT,
+                    Direction.BOTTOM: Tile.T_TURN_HBR,
+                },
+                Direction.LEFT: {
+                    Direction.TOP: Tile.T_TURN_HLT,
+                    Direction.BOTTOM: Tile.T_TURN_HLB,
+                },
+            },
+            Tile.STRAIGHT_V: {
+                Direction.TOP: {
+                    Direction.LEFT: Tile.T_TURN_VTL,
+                    Direction.RIGHT: Tile.T_TURN_VTR,
+                },
+                Direction.BOTTOM: {
+                    Direction.LEFT: Tile.T_TURN_VBL,
+                    Direction.RIGHT: Tile.T_TURN_VRB,
+                },
+            },
+        }
+
+        if self in transform_dict:
+            if direction in transform_dict[self] and direction_flow is None:
+                if direction_flow is None:
+                    return transform_dict[self][direction]
+            if direction_flow is not None and direction_flow in transform_dict[self]:
+                if direction in transform_dict[self][direction_flow]:
+                    return transform_dict[self][direction_flow][direction]
+        return -1
+
 
 def make_connectable_dict():
     data = {}
@@ -207,6 +246,12 @@ def make_connectable_dict():
                 if (
                     src_connection_direction[direction]
                     and dst_connection_direction[direction.opposite]
+                ) or not (
+                    src_connection_direction[direction]
+                    or dst_connection_direction[direction.opposite]
                 ):
                     data[tile_src][tile_dst][direction] = True
     return data
+
+
+TILES_CONNECT = make_connectable_dict()

@@ -1,6 +1,7 @@
 from grid import Grid
-from tile import Tile
-from PIL import Image
+from tile import Tile, Position
+from PIL import Image, ImageDraw
+from utils import load_data
 
 
 class Draw:
@@ -20,6 +21,7 @@ class Draw:
             (grid.width * self.image_width, grid.height * self.image_height),
             "white",
         )
+        imageDrawer = ImageDraw.Draw(image)
         for y in range(grid.height):
             for x in range(grid.width):
                 tile = Tile(grid.get(x, y))
@@ -27,10 +29,32 @@ class Draw:
                     self.tile_images[tile],
                     (x * self.image_width, y * self.image_height),
                 )
+                # draw x, y coordinates string on bottom left of the cell
+                imageDrawer.text(
+                    (x * self.image_width, y * self.image_height + 70),
+                    f"{x}, {y}",
+                    fill="white",
+                )
+        return image
+
+    def draw_with_highlight(self, grid: Grid, postitions: list[Position]) -> None:
+        image = self.draw(grid)
+        imageDrawer = ImageDraw.Draw(image)
+        for position in postitions:
+            imageDrawer.rectangle(
+                [
+                    position.x * self.image_width,
+                    position.y * self.image_height,
+                    (position.x + 1) * self.image_width,
+                    (position.y + 1) * self.image_height,
+                ],
+                outline="red",
+            )
         return image
 
 
 if __name__ == "__main__":
-    grid = Grid([[0, 5, 0], [0, 0, 0], [5, 15, 5], [0, 0, 0]])
+    data = load_data("./src/levels/1-11.json")
+    grid = Grid(data["grid"])
     draw = Draw()
-    draw.draw(grid)
+    draw.draw(grid).show()

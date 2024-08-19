@@ -2,6 +2,12 @@ import time
 from collections import defaultdict
 from contextlib import contextmanager
 from statistics import mean
+import json
+
+
+def load_data(file_path: str) -> dict:
+    with open(file_path, "r") as file:
+        return json.load(file)
 
 
 class TimingManager:
