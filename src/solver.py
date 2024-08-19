@@ -322,6 +322,9 @@ def solve(data: dict):
                     print(f"Best State: {state.placed_tiles}")
                     best_state = state
                     best_min_placed_tiles = state.placed_tiles
+                    img = drawer.draw(state.grid)
+                    cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
+                    cv2.waitKey(1000)
     print("=" * 50, "\n")
     print(f"Finished in {iteration} iterations")
     timer.print()
