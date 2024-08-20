@@ -12,6 +12,12 @@ class Position(NamedTuple):
     def __sub__(self, other: "Position") -> "Position":
         return Position(self.x - other.x, self.y - other.y)
 
+    def __copy__(self):
+        return Position(self.x, self.y)
+
+    def __deepcopy__(self, memo):
+        return Position(self.x, self.y)
+
 
 class Direction(IntEnum):
     TOP, RIGHT, BOTTOM, LEFT = range(4)

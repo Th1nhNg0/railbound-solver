@@ -28,7 +28,6 @@ def solve(data: dict, method: str = "bfs"):
     ]
     grid = Grid(data["grid"])
     state = State(grid, trains, Position(*data["destination"]))
-
     queue = deque([state])
     # img = drawer.draw(state.grid)
     # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
@@ -103,14 +102,16 @@ def run_profile(filepath):
     import cProfile
     import pstats
 
-    cProfile.run(f"solve_one('{filepath}')", "solver_stats")
+    with cProfile.Profile() as pr:
+        solve_one(filepath)
 
-    # Analyze the results
-    p = pstats.Stats("solver_stats")
-    p.sort_stats("cumulative").print_stats(30)
+    result = pstats.Stats(pr)
+    result.sort_stats(pstats.SortKey.TIME)
+    result.print_stats()
+    result.dump_stats("solver_stats")
 
 
 if __name__ == "__main__":
-    # run_profile("./src/levels/1-11A.json")
+    run_profile("./src/levels/1-11A.json")
     solve_one("./src/levels/1-13.json", showImage=True)
     # solve_all()

@@ -23,6 +23,22 @@ class Train:
             and self.order == other.order
         )
 
+    def __copy__(self):
+        return Train(
+            copy.copy(self.position),
+            self.direction,
+            self.order,
+            self.previous_position,
+        )
+
+    def __deepcopy__(self, memo):
+        return Train(
+            copy.deepcopy(self.position, memo),
+            self.direction,
+            self.order,
+            copy.deepcopy(self.previous_position, memo),
+        )
+
 
 @dataclass
 class State:
@@ -134,9 +150,7 @@ class State:
 
     def place_possible_tiles(self, empty_positions: list[tuple[Position, Direction]]):
         new_grids: list[State] = []
-        self._recursive_tile_placement(
-            empty_positions, 0, copy.deepcopy(self.grid), new_grids
-        )
+        self._recursive_tile_placement(empty_positions, 0, self.grid, new_grids)
         new_states = [
             State(
                 grid,

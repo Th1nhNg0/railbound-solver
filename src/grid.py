@@ -66,12 +66,16 @@ class Grid:
             return NotImplemented
         return np.array_equal(self.data, other.data)
 
+    def __copy__(self):
+        return Grid(np.copy(self.data), copy.copy(self.flows))
+
     def __deepcopy__(self, memo):
-        return Grid(
-            np.copy(self.data),
-            # TODO: Implement deep copy for flows so it run faster
-            copy.deepcopy(self.flows, memo),
+        flows = defaultdict(
+            lambda: defaultdict(bool),
+            {k: defaultdict(bool, v) for k, v in self.flows.items()},
         )
+
+        return Grid(np.copy(self.data), flows)
 
 
 if __name__ == "__main__":
