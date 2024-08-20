@@ -58,6 +58,11 @@ class Tile(IntEnum):
 
     FENCE = 15
 
+    TUNNEL_T = 16
+    TUNNEL_R = 17
+    TUNNEL_B = 18
+    TUNNEL_L = 19
+
     @property
     def is_curve(self):
         return self in {

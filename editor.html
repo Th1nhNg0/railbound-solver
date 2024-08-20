@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tile and Car Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex justify-center items-start min-h-screen p-4">
+    <div class="flex space-x-4 max-w-6xl w-full mx-auto">
+      <div class="w-1/3 bg-white rounded-lg shadow-lg p-4">
+        <h2 class="text-lg font-semibold mb-2">Live JSON View</h2>
+        <pre
+          id="jsonView"
+          class="bg-gray-100 p-2 rounded overflow-auto h-[calc(100vh-8rem)]"
+        ></pre>
+      </div>
+      <div class="w-2/3 bg-white rounded-lg shadow-lg p-6 space-y-4">
+        <div
+          id="dock"
+          class="flex space-x-2 overflow-x-auto p-2 bg-gray-200 rounded-lg max-w-full"
+        ></div>
+        <div class="flex space-x-4 justify-center flex-wrap">
+          <button
+            onclick="saveJSON()"
+            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Save JSON
+          </button>
+          <button
+            onclick="resizeGrid()"
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Resize Grid
+          </button>
+          <button
+            onclick="clearGrid()"
+            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Clear Grid
+          </button>
+        </div>
+        <div class="flex items-center space-x-2">
+          <label for="maxTracks" class="font-semibold">Max Tracks:</label>
+          <input
+            type="number"
+            id="maxTracks"
+            min="1"
+            value="3"
+            class="border rounded px-2 py-1 w-16"
+            onchange="updateMaxTracks()"
+          />
+        </div>
+        <div id="grid" class="grid gap-1 justify-center"></div>
+      </div>
+    </div>
+
+    <script>
+      const tiles = [
+        { name: "EMPTY", value: 0 },
+        { name: "CURVE_BR", value: 1 },
+        { name: "CURVE_BL", value: 2 },
+        { name: "CURVE_TL", value: 3 },
+        { name: "CURVE_TR", value: 4 },
+        { name: "STRAIGHT_V", value: 5 },
+        { name: "STRAIGHT_H", value: 6 },
+        { name: "T_TURN_VBL", value: 7 },
+        { name: "T_TURN_HLT", value: 8 },
+        { name: "T_TURN_VTR", value: 9 },
+        { name: "T_TURN_HBR", value: 10 },
+        { name: "T_TURN_VTL", value: 11 },
+        { name: "T_TURN_HRT", value: 12 },
+        { name: "T_TURN_VRB", value: 13 },
+        { name: "T_TURN_HLB", value: 14 },
+        { name: "FENCE", value: 15 },
+        { name: "TUNNEL_T", value: 16 },
+        { name: "TUNNEL_R", value: 17 },
+        { name: "TUNNEL_B", value: 18 },
+        { name: "TUNNEL_L", value: 19 },
+      ];
+
+      let currentSelectionIndex = 0;
+      let currentItems = [
+        ...tiles,
+        { name: "Car", value: "car" },
+        { name: "Destination", value: "destination" },
+      ];
+      let gridSize = { rows: 5, cols: 3 };
+      let grid = Array(gridSize.rows)
+        .fill()
+        .map(() => Array(gridSize.cols).fill(0));
+      let placedCars = [];
+      let destination = null;
+      let maxTracks = 3;
+      function createDock() {
+        const dockElement = document.getElementById("dock");
+        dockElement.innerHTML = ""; // Clear existing dock
+
+        currentItems.forEach((item, index) => {
+          const button = document.createElement("button");
+          button.className = `w-20 h-24 flex-shrink-0 flex flex-col items-center justify-center bg-white border border-gray-300 rounded ${
+            index === currentSelectionIndex ? "ring-2 ring-blue-500" : ""
+          }`;
+
+          // Create the icon element
+          const icon = document.createElement("div");
+          icon.className = "w-12 h-12 bg-cover bg-center mb-1";
+          if (item.value === "car") {
+            icon.style.backgroundImage = `url('./src/images/Car 1.png')`;
+          } else if (item.value === "destination") {
+            icon.style.backgroundColor = "red";
+            icon.style.borderRadius = "50%";
+          } else {
+            icon.style.backgroundImage = `url('./src/images/${item.name}.png')`;
+          }
+
+          // Create the label element
+          const label = document.createElement("span");
+          label.className = "text-xs text-center";
+          label.textContent = item.name;
+
+          button.appendChild(icon);
+          button.appendChild(label);
+          button.onclick = () => selectDockItem(index);
+          dockElement.appendChild(button);
+        });
+      }
+      function selectDockItem(index) {
+        currentSelectionIndex = index;
+        createDock(); // Refresh dock to update highlighting
+      }
+
+      function createGrid() {
+        const gridElement = document.getElementById("grid");
+        gridElement.innerHTML = ""; // Clear existing grid
+        gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 90px)`;
+
+        for (let i = 0; i < gridSize.rows; i++) {
+          for (let j = 0; j < gridSize.cols; j++) {
+            const cell = document.createElement("div");
+            cell.className =
+              "w-[90px] h-[90px] bg-cover bg-center border border-gray-300 cursor-pointer relative";
+            cell.style.backgroundImage = `url('./src/images/EMPTY.png')`;
+            cell.onclick = () => updateCell(i, j);
+            gridElement.appendChild(cell);
+          }
+        }
+        updateCarDisplay();
+        updateDestinationDisplay();
+        updateJSONView();
+      }
+
+      function updateCell(row, col) {
+        const selectedItem = currentItems[currentSelectionIndex];
+        if (selectedItem.value === "destination") {
+          destination = { x: col, y: row };
+        } else if (selectedItem.value !== "car") {
+          grid[row][col] = selectedItem.value;
+          const cells = document.getElementById("grid").children;
+          const index = row * gridSize.cols + col;
+          const cell = cells[index];
+          if (cell) {
+            const imagePath = `./src/images/${selectedItem.name}.png`;
+            cell.style.backgroundImage = `url('${imagePath}')`;
+          }
+        } else {
+          const existingCarIndex = placedCars.findIndex(
+            (car) => car.x === col && car.y === row
+          );
+          if (existingCarIndex !== -1) {
+            // Rotate the existing car
+            placedCars[existingCarIndex].direction =
+              (placedCars[existingCarIndex].direction + 1) % 4;
+          } else {
+            // Place a new car
+            placedCars.push({ x: col, y: row, direction: 1 }); // Direction 1 corresponds to the car's direction in the image
+          }
+        }
+        updateCarDisplay();
+        updateDestinationDisplay();
+        updateJSONView();
+      }
+
+      function updateCarDisplay() {
+        const cells = document.getElementById("grid").children;
+        for (let i = 0; i < cells.length; i++) {
+          const carElement = cells[i].querySelector(".car-indicator");
+          if (carElement) carElement.remove();
+        }
+        placedCars.forEach((car) => {
+          const index = car.y * gridSize.cols + car.x;
+          const cell = cells[index];
+          if (cell) {
+            const carElement = document.createElement("div");
+            carElement.className =
+              "car-indicator absolute inset-0 bg-cover bg-center";
+            carElement.style.backgroundImage = `url('./src/images/Car 1.png')`;
+            carElement.style.transform = `rotate(${
+              (car.direction - 1) * 90
+            }deg)`;
+            cell.appendChild(carElement);
+          }
+        });
+      }
+
+      function updateDestinationDisplay() {
+        const cells = document.getElementById("grid").children;
+        for (let i = 0; i < cells.length; i++) {
+          const destinationElement = cells[i].querySelector(
+            ".destination-indicator"
+          );
+          if (destinationElement) destinationElement.remove();
+        }
+        if (destination) {
+          const index = destination.y * gridSize.cols + destination.x;
+          const cell = cells[index];
+          if (cell) {
+            const destinationElement = document.createElement("div");
+            destinationElement.className =
+              "destination-indicator absolute inset-0 flex items-center justify-center";
+            const dot = document.createElement("div");
+            dot.className = "w-6 h-6 bg-red-500 rounded-full";
+            destinationElement.appendChild(dot);
+            cell.appendChild(destinationElement);
+          }
+        }
+      }
+
+      function updateJSONView() {
+        const data = {
+          grid: grid,
+          destination: destination ? [destination.x, destination.y] : null,
+          trains: placedCars.map((car) => ({ ...car, order: 1 })),
+          max_tracks: maxTracks,
+        };
+        function customPrettyPrint(jsonObject) {
+          let result = "{\n";
+          for (const key in jsonObject) {
+            if (jsonObject.hasOwnProperty(key)) {
+              if (key === "grid") {
+                result += `  "${key}": [\n`;
+                jsonObject[key].forEach((row) => {
+                  result += `    [${row.join(", ")}],\n`;
+                });
+                result = result.slice(0, -2) + "\n  ],\n";
+              } else {
+                const value = JSON.stringify(jsonObject[key], null, 2).replace(
+                  /\n/g,
+                  "\n  "
+                );
+                result += `  "${key}": ${value},\n`;
+              }
+            }
+          }
+          result = result.slice(0, -2) + "\n}";
+          return result;
+        }
+
+        const jsonString = customPrettyPrint(data);
+        console.log(jsonString);
+        document.getElementById("jsonView").textContent = jsonString;
+      }
+
+      function saveJSON() {
+        const data = {
+          grid: grid,
+          destination: destination ? [destination.x, destination.y] : null,
+          trains: placedCars.map((car) => ({ ...car, order: 1 })),
+          max_tracks: maxTracks,
+        };
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "tile_layout.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function resizeGrid() {
+        const rows = prompt("Enter number of rows:", gridSize.rows);
+        const cols = prompt("Enter number of columns:", gridSize.cols);
+        if (rows && cols) {
+          gridSize = { rows: parseInt(rows), cols: parseInt(cols) };
+          grid = Array(gridSize.rows)
+            .fill()
+            .map(() => Array(gridSize.cols).fill(0));
+          placedCars = [];
+          destination = null;
+          createGrid();
+        }
+      }
+
+      function clearGrid() {
+        grid = Array(gridSize.rows)
+          .fill()
+          .map(() => Array(gridSize.cols).fill(0));
+        placedCars = [];
+        destination = null;
+        createGrid();
+      }
+
+      function updateMaxTracks() {
+        maxTracks = parseInt(document.getElementById("maxTracks").value);
+        updateJSONView();
+      }
+
+      // Handle mouse wheel scrolling
+      document.addEventListener("wheel", (event) => {
+        if (event.deltaY > 0) {
+          currentSelectionIndex =
+            (currentSelectionIndex + 1) % currentItems.length;
+        } else {
+          currentSelectionIndex =
+            (currentSelectionIndex - 1 + currentItems.length) %
+            currentItems.length;
+        }
+        createDock(); // Refresh dock to update highlighting
+      });
+
+      createDock();
+      createGrid();
+    </script>
+  </body>
+</html>

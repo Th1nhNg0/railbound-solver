@@ -92,6 +92,8 @@ def solve_one(filepath, showImage=False):
     print("--- %s seconds ---" % (time.time() - start_time))
     if solution["best_solution"] is not None:
         print(f'Found solution in {solution["iteration"]} iterations')
+        print(f"Placed tiles: {solution['best_solution'].placed_tiles}")
+
         if showImage:
             img = drawer.draw(solution["best_solution"], debug=True)
             cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
@@ -112,6 +114,6 @@ def run_profile(filepath):
 
 
 if __name__ == "__main__":
-    run_profile("./src/levels/1-11A.json")
-    solve_one("./src/levels/1-13.json", showImage=True)
+    # run_profile("./src/levels/1-11A.json")
+    solve_one("./src/levels/test.json", showImage=True)
     # solve_all()
