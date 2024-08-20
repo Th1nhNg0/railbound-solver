@@ -10,7 +10,7 @@ from grid import Grid
 from tile import TILES_CONNECT, Direction, Position, Tile
 from utils import load_data, TimingManager
 
-timer = TimingManager()
+timer = TimingManager(enabled=False)
 drawer = Draw()
 
 
@@ -292,7 +292,9 @@ class State:
         return True
 
 
-def solve(data: dict):
+def solve(data: dict, method: str = "bfs"):
+    if method not in ["bfs", "dfs"]:
+        raise ValueError("Invalid method")
     trains = [
         Train(
             Position(train["x"], train["y"]),
@@ -313,15 +315,16 @@ def solve(data: dict):
     iteration = 0
     best_state = None
     best_min_placed_tiles = data["max_tracks"] + 1 if "max_tracks" in data else 10000
-
     while queue:
         iteration += 1
         with timer.measure_time("Iteration"):
-            state = queue.pop()
+            if method == "dfs":
+                state = queue.pop()
+            if method == "bfs":
+                state = queue.popleft()
 
             if state.placed_tiles > best_min_placed_tiles:
                 continue
-
             with timer.measure_time("Simulation"):
                 result = state.simulate()
 
@@ -332,22 +335,22 @@ def solve(data: dict):
                     queue.extend(possible_states)
 
             if result[0] == "success":
-                if state.placed_tiles < best_min_placed_tiles:
+                if state.placed_tiles <= best_min_placed_tiles:
                     best_state = state
                     best_min_placed_tiles = state.placed_tiles
 
-    print("=" * 50, "\n")
-    print(f"Finished in {iteration} iterations")
     timer.print()
-    if best_state:
-        print(f"Found best state with {best_state.placed_tiles} tile placed")
-        return best_state
+    return {
+        "best_state": best_state,
+        "iteration": iteration,
+    }
 
 
 if __name__ == "__main__":
-    data = load_data("./src/levels/1-11B.json")
-    solution = solve(data)
-    if solution:
-        img = drawer.draw(solution.grid)
+    data = load_data("./src/levels/1-9.json")
+    solution = solve(data, "dfs")
+    if solution["best_state"] is not None:
+        print(f'Found solution in {solution["iteration"]} iterations')
+        img = drawer.draw(solution["best_state"].grid)
         cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
         cv2.waitKey(0)
