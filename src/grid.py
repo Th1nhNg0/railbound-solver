@@ -69,6 +69,7 @@ class Grid:
     def __deepcopy__(self, memo):
         return Grid(
             np.copy(self.data),
+            # TODO: Implement deep copy for flows so it run faster
             copy.deepcopy(self.flows, memo),
         )
 
