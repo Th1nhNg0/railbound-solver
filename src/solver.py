@@ -2,7 +2,7 @@ import copy
 from collections import deque
 from dataclasses import dataclass
 from typing import Optional
-
+import pprint
 import cv2
 import numpy as np
 
@@ -10,7 +10,8 @@ from draw import Draw
 from grid import Grid
 from tile import TILES_CONNECT, Direction, Position, Tile
 from utils import load_data, TimingManager
-
+import glob
+import os
 
 timer = TimingManager()
 drawer = Draw()
@@ -179,6 +180,21 @@ class State:
                                     state.grid.set(
                                         adjacent_pos.x, adjacent_pos.y, to_change
                                     )
+                            if adjacent_tile.is_straight:
+                                flow = state.grid.get_flow(
+                                    adjacent_pos.x, adjacent_pos.y
+                                )
+
+                                if len(flow) == 1:
+                                    key = next(iter(flow))
+                                    to_change = adjacent_tile.to_t_turn(
+                                        output_direction.opposite, key
+                                    )
+                                    if to_change != -1:
+                                        state.grid.set(
+                                            adjacent_pos.x, adjacent_pos.y, to_change
+                                        )
+
                     # try to change the current tile to make the placement valid
                     for direction in Direction:
                         if (
@@ -247,6 +263,8 @@ class State:
 
             new_state = copy.deepcopy(current_state)
             new_state.grid.set(pos.x, pos.y, tile)
+            if tile.is_straight:
+                new_state.grid.add_flow(pos.x, pos.y, direction)
             new_state.placed_tiles += 1
             self._recursive_tile_placement(
                 empty_positions, index + 1, new_state, new_states
@@ -304,11 +322,6 @@ def solve(data: dict):
 
             visited.add(hash(state))
 
-            # with timer.measure_time("Draw"):
-            #     img = drawer.draw(state.grid)
-            #     cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
-            #     cv2.waitKey(1)
-
             with timer.measure_time("Simulation"):
                 result = state.simulate()
             if result[0] == "empty_pos_reached":
@@ -322,19 +335,32 @@ def solve(data: dict):
                     print(f"Best State: {state.placed_tiles}")
                     best_state = state
                     best_min_placed_tiles = state.placed_tiles
-                    # img = drawer.draw(state.grid)
-                    # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
-                    # cv2.waitKey(1000)
+
     print("=" * 50, "\n")
     print(f"Finished in {iteration} iterations")
     timer.print()
     if best_state:
         print("Found best state")
-        img = drawer.draw(best_state.grid)
-        cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
-        cv2.waitKey(0)
+        # print(f"Placed Tiles: {best_state.placed_tiles}")
+        # img = drawer.draw(best_state.grid)
+        # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
+        # cv2.waitKey(0)
+        return best_state
 
 
 if __name__ == "__main__":
-    data = load_data("./src/levels/1-11A.json")
-    solve(data)
+    levels = glob.glob("./src/levels/*.json")
+    os.makedirs("./src/solutions", exist_ok=True)
+    for level in levels:
+        level_name = os.path.basename(level)
+        print(f"Level: {level_name}")
+        data = load_data(level)
+        solution = solve(data)
+        if solution:
+            print("Solution found")
+            img = drawer.draw(solution.grid)
+            cv2.imwrite(
+                f"./src/solutions/{level_name}.png",
+                cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB),
+            )
+        print("=" * 50, "\n")
