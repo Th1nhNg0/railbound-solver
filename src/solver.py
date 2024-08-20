@@ -89,7 +89,7 @@ def solve_one(filepath, showImage=False):
     data = load_data(filepath)
     start_time = time.time()
     print(f"Solving {filepath}")
-    solution = solve(data, "bfs")
+    solution = solve(data, "dfs")
     print("--- %s seconds ---" % (time.time() - start_time))
     if solution["best_solution"] is not None:
         print(f'Found solution in {solution["iteration"]} iterations')
@@ -112,5 +112,5 @@ def run_profile(filepath):
 
 if __name__ == "__main__":
     # run_profile("./src/levels/1-11A.json")
-    # solve_one("./src/levels/1-11.json", showImage=True)
-    solve_all()
+    solve_one("./src/levels/1-13.json", showImage=True)
+    # solve_all()

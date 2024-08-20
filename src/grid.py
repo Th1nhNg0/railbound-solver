@@ -1,10 +1,9 @@
+import copy
 from dataclasses import dataclass
 from typing import Union, List
 import numpy as np
 from tile import Direction
 from collections import defaultdict
-import timeit
-import copy
 
 
 @dataclass
@@ -70,7 +69,7 @@ class Grid:
     def __deepcopy__(self, memo):
         return Grid(
             np.copy(self.data),
-            self.flows,
+            copy.deepcopy(self.flows, memo),
         )
 
 
