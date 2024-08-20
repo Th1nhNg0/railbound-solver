@@ -313,7 +313,7 @@ def solve(data: dict, method: str = "bfs"):
 
     timer.reset()
     iteration = 0
-    best_state = None
+    best_solution = None
     best_min_placed_tiles = data["max_tracks"] + 1 if "max_tracks" in data else 10000
     while queue:
         iteration += 1
@@ -336,21 +336,21 @@ def solve(data: dict, method: str = "bfs"):
 
             if result[0] == "success":
                 if state.placed_tiles <= best_min_placed_tiles:
-                    best_state = state
+                    best_solution = state
                     best_min_placed_tiles = state.placed_tiles
 
     timer.print()
     return {
-        "best_state": best_state,
+        "best_solution": best_solution,
         "iteration": iteration,
     }
 
 
 if __name__ == "__main__":
-    data = load_data("./src/levels/1-9.json")
+    data = load_data("./src/levels/1-11A.json")
     solution = solve(data, "dfs")
-    if solution["best_state"] is not None:
+    if solution["best_solution"] is not None:
         print(f'Found solution in {solution["iteration"]} iterations')
-        img = drawer.draw(solution["best_state"].grid)
+        img = drawer.draw(solution["best_solution"].grid)
         cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
         cv2.waitKey(0)

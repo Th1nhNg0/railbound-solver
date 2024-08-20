@@ -27,5 +27,6 @@
       "direction": 0,
       "order": 3
     }
-  ]
+  ],
+  "max_tracks": 8
 }
