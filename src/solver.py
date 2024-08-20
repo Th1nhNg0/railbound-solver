@@ -2,15 +2,15 @@ import copy
 from collections import deque
 from dataclasses import dataclass
 from typing import Optional
+
 import cv2
 import numpy as np
 
 from draw import Draw
 from grid import Grid
 from tile import TILES_CONNECT, Direction, Position, Tile
-from utils import load_data, TimingManager
+from utils import load_data
 
-timer = TimingManager(enabled=False)
 drawer = Draw()
 
 
@@ -39,16 +39,15 @@ class State:
     destination: Position
     order_counter: int = 0
     placed_tiles: int = 0
-    immutable_positions: list[Position] = None
+    immutable_positions: Optional[set[Position]] = None
 
     def __post_init__(self):
         if self.immutable_positions is None:
-            self.immutable_positions = [
-                Position(x, y)
-                for x in range(self.grid.width)
-                for y in range(self.grid.height)
-                if self.grid.get(x, y) != Tile.EMPTY
-            ]
+            self.immutable_positions = set()
+            for x in range(self.grid.width):
+                for y in range(self.grid.height):
+                    if self.grid.get(x, y) != Tile.EMPTY:
+                        self.immutable_positions.add(Position(x, y))
 
     def __hash__(self):
         return hash((self.grid, tuple(self.trains)))
@@ -146,98 +145,93 @@ class State:
         self._recursive_tile_placement(
             empty_positions, 0, copy.deepcopy(self), new_states
         )
-        # filtering out invalid placements
+        # Try to fix invalid placements
         result = []
-        with timer.measure_time("Filtering state_1"):
-            for state in new_states:
-                for pos, input_direction in empty_positions:
-                    tile = Tile(state.grid.get(pos.x, pos.y))
-                    if not state.is_valid_placement(pos, tile):
-                        output_direction = tile.get_output_direction(input_direction)
-                        adjacent_pos = pos + output_direction.delta
-                        # try to change the adjacent tile to make the placement valid
+        for state in new_states:
+            for pos, input_direction in empty_positions:
+                tile = Tile(state.grid.get(pos.x, pos.y))
+                if not state.is_valid_placement(pos, tile):
+                    output_direction = tile.get_output_direction(input_direction)
+                    adjacent_pos = pos + output_direction.delta
+                    # try to change the adjacent tile to make the placement valid
+                    if (
+                        0 <= adjacent_pos.x < state.grid.width
+                        and 0 <= adjacent_pos.y < state.grid.height
+                        and adjacent_pos not in self.immutable_positions
+                    ):
+                        adjacent_tile = Tile(
+                            state.grid.get(adjacent_pos.x, adjacent_pos.y)
+                        )
+                        if (
+                            adjacent_tile != Tile.EMPTY
+                            and adjacent_tile != Tile.FENCE
+                            and not adjacent_tile.is_t_turn
+                            and not TILES_CONNECT[tile][adjacent_tile][output_direction]
+                        ):
+                            if adjacent_tile.is_curve:
+                                to_change = adjacent_tile.to_t_turn(
+                                    output_direction.opposite
+                                )
+                                if to_change != -1:
+                                    state.grid.set(
+                                        adjacent_pos.x,
+                                        adjacent_pos.y,
+                                        to_change,
+                                    )
+                            if adjacent_tile.is_straight:
+                                flow = state.grid.get_flow(
+                                    adjacent_pos.x, adjacent_pos.y
+                                )
+
+                                if len(flow) == 1:
+                                    key = next(iter(flow))
+                                    to_change = adjacent_tile.to_t_turn(
+                                        output_direction.opposite, key
+                                    )
+                                    if to_change != -1:
+                                        state.grid.set(
+                                            adjacent_pos.x,
+                                            adjacent_pos.y,
+                                            to_change,
+                                        )
+
+                    # try to change the current tile to make the placement valid
+                    for direction in Direction:
+                        if (
+                            direction == input_direction.opposite
+                            or direction == output_direction
+                        ):
+                            continue
+                        adjacent_pos = pos + direction.delta
                         if (
                             0 <= adjacent_pos.x < state.grid.width
                             and 0 <= adjacent_pos.y < state.grid.height
-                            and adjacent_pos not in self.immutable_positions
                         ):
                             adjacent_tile = Tile(
                                 state.grid.get(adjacent_pos.x, adjacent_pos.y)
                             )
                             if (
-                                adjacent_tile != Tile.EMPTY
-                                and adjacent_tile != Tile.FENCE
-                                and not adjacent_tile.is_t_turn
-                                and not TILES_CONNECT[tile][adjacent_tile][
-                                    output_direction
-                                ]
-                            ):
-                                if adjacent_tile.is_curve:
-                                    to_change = adjacent_tile.to_t_turn(
-                                        output_direction.opposite
-                                    )
-                                    if to_change != -1:
-                                        state.grid.set(
-                                            adjacent_pos.x, adjacent_pos.y, to_change
-                                        )
-                                if adjacent_tile.is_straight:
-                                    flow = state.grid.get_flow(
-                                        adjacent_pos.x, adjacent_pos.y
-                                    )
-
-                                    if len(flow) == 1:
-                                        key = next(iter(flow))
-                                        to_change = adjacent_tile.to_t_turn(
-                                            output_direction.opposite, key
-                                        )
-                                        if to_change != -1:
-                                            state.grid.set(
-                                                adjacent_pos.x,
-                                                adjacent_pos.y,
-                                                to_change,
-                                            )
-
-                        # try to change the current tile to make the placement valid
-                        for direction in Direction:
-                            if (
-                                direction == input_direction.opposite
-                                or direction == output_direction
+                                adjacent_tile == Tile.EMPTY
+                                or adjacent_tile == Tile.FENCE
                             ):
                                 continue
-                            adjacent_pos = pos + direction.delta
-                            if (
-                                0 <= adjacent_pos.x < state.grid.width
-                                and 0 <= adjacent_pos.y < state.grid.height
-                            ):
-                                adjacent_tile = Tile(
-                                    state.grid.get(adjacent_pos.x, adjacent_pos.y)
-                                )
-                                if (
-                                    adjacent_tile == Tile.EMPTY
-                                    or adjacent_tile == Tile.FENCE
-                                ):
-                                    continue
-                                adj_connection = (
-                                    adjacent_tile.get_connection_direction()
-                                )
-                                if adj_connection[direction.opposite]:
-                                    direction_flow = None
-                                    if tile.is_straight:
-                                        direction_flow = input_direction
-                                    to_change = tile.to_t_turn(
-                                        direction, direction_flow
-                                    )
-                                    if to_change != -1:
-                                        state.grid.set(pos.x, pos.y, to_change)
-        with timer.measure_time("Filtering state_2"):
-            result = [
-                state
-                for state in new_states
-                if all(
-                    state.is_valid_placement(pos, Tile(state.grid.get(pos.x, pos.y)))
-                    for pos, _ in empty_positions
-                )
-            ]
+                            adj_connection = adjacent_tile.get_connection_direction()
+                            if adj_connection[direction.opposite]:
+                                direction_flow = None
+                                if tile.is_straight:
+                                    direction_flow = input_direction
+                                to_change = tile.to_t_turn(direction, direction_flow)
+                                if to_change != -1:
+                                    state.grid.set(pos.x, pos.y, to_change)
+        # filtering out invalid placements
+        result = [
+            state
+            for state in new_states
+            if all(
+                state.is_valid_placement(pos, Tile(state.grid.get(pos.x, pos.y)))
+                for pos, _ in empty_positions
+            )
+        ]
         return result
 
     def _recursive_tile_placement(
@@ -252,9 +246,14 @@ class State:
             return
 
         pos, direction = empty_positions[index]
-        for tile in Tile:
-            if not (tile.is_curve or tile.is_straight):
-                continue
+        for tile in [
+            Tile.STRAIGHT_H,
+            Tile.STRAIGHT_V,
+            Tile.CURVE_BL,
+            Tile.CURVE_BR,
+            Tile.CURVE_TL,
+            Tile.CURVE_TR,
+        ]:
             adjacent_pos = pos - direction.delta
             if (
                 0 <= adjacent_pos.x < self.grid.width
@@ -311,46 +310,60 @@ def solve(data: dict, method: str = "bfs"):
     # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
     # cv2.waitKey(1000)
 
-    timer.reset()
     iteration = 0
     best_solution = None
     best_min_placed_tiles = data["max_tracks"] + 1 if "max_tracks" in data else 10000
     while queue:
         iteration += 1
-        with timer.measure_time("Iteration"):
-            if method == "dfs":
-                state = queue.pop()
-            if method == "bfs":
-                state = queue.popleft()
+        if method == "dfs":
+            state = queue.pop()
+        if method == "bfs":
+            state = queue.popleft()
 
-            if state.placed_tiles > best_min_placed_tiles:
-                continue
-            with timer.measure_time("Simulation"):
-                result = state.simulate()
+        if state.placed_tiles > best_min_placed_tiles:
+            continue
+        result = state.simulate()
 
-            if result[0] == "empty_pos_reached":
-                with timer.measure_time("Place Possible Tiles"):
-                    empty_positions = result[1]
-                    possible_states = state.place_possible_tiles(empty_positions)
-                    queue.extend(possible_states)
+        if result[0] == "empty_pos_reached":
+            empty_positions = result[1]
+            possible_states = state.place_possible_tiles(empty_positions)
+            queue.extend(possible_states)
 
-            if result[0] == "success":
-                if state.placed_tiles <= best_min_placed_tiles:
-                    best_solution = state
-                    best_min_placed_tiles = state.placed_tiles
+        if result[0] == "success":
+            if state.placed_tiles <= best_min_placed_tiles:
+                best_solution = state
+                best_min_placed_tiles = state.placed_tiles
 
-    timer.print()
     return {
         "best_solution": best_solution,
         "iteration": iteration,
     }
 
 
-if __name__ == "__main__":
+def profile_solver():
+    # Your existing code to load data and call solve()
     data = load_data("./src/levels/1-11A.json")
-    solution = solve(data, "dfs")
-    if solution["best_solution"] is not None:
-        print(f'Found solution in {solution["iteration"]} iterations')
-        img = drawer.draw(solution["best_solution"].grid)
-        cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
-        cv2.waitKey(0)
+    solution = solve(data, "bfs")
+
+
+def run_profile():
+    import cProfile
+    import pstats
+
+    cProfile.run("profile_solver()", "solver_stats")
+
+    # Analyze the results
+    p = pstats.Stats("solver_stats")
+    p.sort_stats("cumulative").print_stats(30)
+
+
+if __name__ == "__main__":
+    run_profile()
+    # data = load_data("./src/levels/1-11A.json")
+    # solution = solve(data, "bfs")
+
+    # if solution["best_solution"] is not None:
+    #     print(f'Found solution in {solution["iteration"]} iterations')
+    #     img = drawer.draw(solution["best_solution"].grid)
+    #     cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
+    #     cv2.waitKey(0)
