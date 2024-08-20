@@ -2,6 +2,7 @@ from grid import Grid
 from tile import Tile, Position
 from PIL import Image, ImageDraw
 from utils import load_data
+from state import State
 
 
 class Draw:
@@ -13,43 +14,37 @@ class Draw:
 
     def load_image(self):
         for tile in Tile:
-            self.tile_images[tile] = Image.open(f"./src/images/{tile.name}.png")
+            self.tile_images[tile.value] = Image.open(f"./src/images/{tile.name}.png")
+            if tile.is_curve or tile.is_straight:
+                self.tile_images[f"{tile.value}_2"] = Image.open(
+                    f"./src/images/{tile.name}_2.png"
+                )
 
-    def draw(self, grid: Grid) -> None:
+    def draw(self, state: State, debug: bool = False) -> None:
+        grid = state.grid
         image = Image.new(
-            "RGB",
+            "RGBA",
             (grid.width * self.image_width, grid.height * self.image_height),
-            "white",
+            "#dbd692",
         )
         imageDrawer = ImageDraw.Draw(image)
         for y in range(grid.height):
             for x in range(grid.width):
                 tile = Tile(grid.get(x, y))
-                image.paste(
-                    self.tile_images[tile],
-                    (x * self.image_width, y * self.image_height),
-                )
+                if Position(x, y) in state.immutable_positions and (
+                    tile.is_curve or tile.is_straight
+                ):
+                    img = self.tile_images[f"{tile.value}_2"]
+                else:
+                    img = self.tile_images[tile.value]
+                image.paste(img, (x * self.image_width, y * self.image_height), img)
                 # draw x, y coordinates string on bottom left of the cell
-                imageDrawer.text(
-                    (x * self.image_width, y * self.image_height + 70),
-                    f"{x}, {y}",
-                    fill="white",
-                )
-        return image
-
-    def draw_with_highlight(self, grid: Grid, postitions: list[Position]) -> None:
-        image = self.draw(grid)
-        imageDrawer = ImageDraw.Draw(image)
-        for position in postitions:
-            imageDrawer.rectangle(
-                [
-                    position.x * self.image_width,
-                    position.y * self.image_height,
-                    (position.x + 1) * self.image_width,
-                    (position.y + 1) * self.image_height,
-                ],
-                outline="red",
-            )
+                if debug:
+                    imageDrawer.text(
+                        (x * self.image_width, y * self.image_height + 70),
+                        f"{x}, {y}",
+                        fill="black",
+                    )
         return image
 
 

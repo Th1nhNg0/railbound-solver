@@ -3,6 +3,7 @@ from typing import Union, List
 import numpy as np
 from tile import Direction
 from collections import defaultdict
+import timeit
 import copy
 
 
@@ -66,11 +67,11 @@ class Grid:
             return NotImplemented
         return np.array_equal(self.data, other.data)
 
-    def __copy__(self):
-        return Grid(copy.copy(self.data), copy.copy(self.flows))
-
     def __deepcopy__(self, memo):
-        return Grid(copy.deepcopy(self.data, memo), copy.deepcopy(self.flows, memo))
+        return Grid(
+            np.copy(self.data),
+            self.flows,
+        )
 
 
 if __name__ == "__main__":
