@@ -3,56 +3,102 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tile and Car Editor</title>
+    <title>Tile and Car Editor (Canvas with Pan and Zoom)</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="bg-gray-100 flex justify-center items-start min-h-screen p-4">
-    <div class="flex space-x-4 max-w-6xl w-full mx-auto">
-      <div class="w-1/3 bg-white rounded-lg shadow-lg p-4">
+  <body
+    class="bg-gray-900 flex flex-col h-screen overflow-hidden text-gray-200"
+  >
+    <div class="flex flex-col md:flex-row flex-1 p-2 gap-2 overflow-hidden">
+      <divØ
+        class="w-full md:w-1/4 bg-gray-800 rounded-lg shadow-sm p-4 flex flex-col overflow-hidden"
+      >
         <h2 class="text-lg font-semibold mb-2">Live JSON View</h2>
         <pre
           id="jsonView"
-          class="bg-gray-100 p-2 rounded overflow-auto h-[calc(100vh-8rem)]"
+          class="bg-gray-700 flex-1 p-2 mb-2 rounded-lg overflow-auto text-xs"
         ></pre>
-      </div>
-      <div class="w-2/3 bg-white rounded-lg shadow-lg p-6 space-y-4">
-        <div
-          id="dock"
-          class="flex space-x-2 overflow-x-auto p-2 bg-gray-200 rounded-lg max-w-full"
-        ></div>
-        <div class="flex space-x-4 justify-center flex-wrap">
-          <button
-            onclick="saveJSON()"
-            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-          >
-            Save JSON
-          </button>
-          <button
-            onclick="resizeGrid()"
-            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            Resize Grid
-          </button>
+        <button
+          onclick="saveJSON()"
+          class="border border-gray-600 text-gray-300 px-4 py-2 rounded hover:bg-gray-700"
+        >
+          Save JSON
+        </button>
+      </divØ>
+
+      <div
+        class="w-full md:w-3/4 bg-gray-800 rounded-lg shadow-sm flex flex-col p-4 overflow-hidden"
+      >
+        <div class="flex flex-wrap justify-center gap-2 mb-4">
+          <div class="flex items-center space-x-2">
+            <input
+              type="number"
+              id="rowsInput"
+              min="1"
+              value="5"
+              class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-16 text-gray-200"
+            />
+            <span>x</span>
+            <input
+              type="number"
+              id="colsInput"
+              min="1"
+              value="3"
+              class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-16 text-gray-200"
+            />
+          </div>
           <button
             onclick="clearGrid()"
-            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            class="border border-gray-600 text-gray-300 px-4 py-2 rounded hover:bg-gray-700"
           >
             Clear Grid
           </button>
+          <div class="flex items-center space-x-2">
+            <label for="maxTracks" class="font-semibold">Max Tracks:</label>
+            <input
+              type="number"
+              id="maxTracks"
+              min="1"
+              value="3"
+              class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-16 text-gray-200"
+              onchange="updateMaxTracks()"
+            />
+          </div>
         </div>
-        <div class="flex items-center space-x-2">
-          <label for="maxTracks" class="font-semibold">Max Tracks:</label>
-          <input
-            type="number"
-            id="maxTracks"
-            min="1"
-            value="3"
-            class="border rounded px-2 py-1 w-16"
-            onchange="updateMaxTracks()"
-          />
+
+        <div id="canvasContainer" class="flex-1 overflow-hidden relative">
+          <div id="resetViewTooltip" class="absolute top-4 right-4 z-10">
+            <button
+              id="resetViewBtn"
+              class="bg-gray-700 text-gray-300 px-3 py-2 text-sm rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 flex items-center gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="size-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+
+              Reset View
+            </button>
+          </div>
+          <canvas id="gridCanvas"></canvas>
         </div>
-        <div id="grid" class="grid gap-1 justify-center"></div>
       </div>
+    </div>
+    <div class="p-2">
+      <div
+        id="dock"
+        class="flex flex-wrap gap-2 p-2 bg-gray-800 border border-gray-700 shadow-sm rounded-lg overflow-x-auto"
+      ></div>
     </div>
 
     <script>
@@ -82,7 +128,7 @@
       let currentSelectionIndex = 0;
       let currentItems = [
         ...tiles,
-        { name: "Car", value: "car" },
+        { name: "Train", value: "car" },
         { name: "Destination", value: "destination" },
       ];
       let gridSize = { rows: 5, cols: 3 };
@@ -92,19 +138,40 @@
       let placedCars = [];
       let destination = null;
       let maxTracks = 3;
+
+      // Canvas variables
+      const canvas = document.getElementById("gridCanvas");
+      const ctx = canvas.getContext("2d");
+      let cellSize = 90;
+      let panOffset = { x: 0, y: 0 };
+      let scale = 1;
+      let isDragging = false;
+      let lastMousePos = { x: 0, y: 0 };
+
+      // Load images
+      const images = {};
+      currentItems.forEach((item) => {
+        if (item.name !== "Car" && item.name !== "Destination") {
+          const img = new Image();
+          img.src = `./src/images/${item.name}.png`;
+          images[item.name] = img;
+        }
+      });
+      const carImage = new Image();
+      carImage.src = "./src/images/Car 1.png";
+
       function createDock() {
         const dockElement = document.getElementById("dock");
-        dockElement.innerHTML = ""; // Clear existing dock
+        dockElement.innerHTML = "";
 
         currentItems.forEach((item, index) => {
           const button = document.createElement("button");
-          button.className = `w-20 h-24 flex-shrink-0 flex flex-col items-center justify-center bg-white border border-gray-300 rounded ${
+          button.className = `w-12 h-12 flex-shrink-0 flex flex-col items-center justify-center bg-gray-700 border border-gray-600 rounded ${
             index === currentSelectionIndex ? "ring-2 ring-blue-500" : ""
           }`;
 
-          // Create the icon element
           const icon = document.createElement("div");
-          icon.className = "w-12 h-12 bg-cover bg-center mb-1";
+          icon.className = "w-8 h-8 bg-cover bg-center mb-1";
           if (item.value === "car") {
             icon.style.backgroundImage = `url('./src/images/Car 1.png')`;
           } else if (item.value === "destination") {
@@ -114,9 +181,8 @@
             icon.style.backgroundImage = `url('./src/images/${item.name}.png')`;
           }
 
-          // Create the label element
           const label = document.createElement("span");
-          label.className = "text-xs text-center";
+          label.className = "text-[6px] text-center text-gray-300";
           label.textContent = item.name;
 
           button.appendChild(icon);
@@ -125,29 +191,74 @@
           dockElement.appendChild(button);
         });
       }
+
       function selectDockItem(index) {
         currentSelectionIndex = index;
-        createDock(); // Refresh dock to update highlighting
+        createDock();
       }
 
-      function createGrid() {
-        const gridElement = document.getElementById("grid");
-        gridElement.innerHTML = ""; // Clear existing grid
-        gridElement.style.gridTemplateColumns = `repeat(${gridSize.cols}, 90px)`;
+      function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(panOffset.x, panOffset.y);
+        ctx.scale(scale, scale);
 
         for (let i = 0; i < gridSize.rows; i++) {
           for (let j = 0; j < gridSize.cols; j++) {
-            const cell = document.createElement("div");
-            cell.className =
-              "w-[90px] h-[90px] bg-cover bg-center border border-gray-300 cursor-pointer relative";
-            cell.style.backgroundImage = `url('./src/images/EMPTY.png')`;
-            cell.onclick = () => updateCell(i, j);
-            gridElement.appendChild(cell);
+            const x = j * cellSize;
+            const y = i * cellSize;
+
+            // Draw cell background
+            ctx.fillStyle = "#1F2937";
+            ctx.fillRect(x, y, cellSize, cellSize);
+
+            // Draw cell border
+            ctx.strokeStyle = "#4B5563";
+            ctx.strokeRect(x, y, cellSize, cellSize);
+
+            // Draw tile image
+            const tileValue = grid[i][j];
+            const tileName =
+              tiles.find((t) => t.value === tileValue)?.name || "EMPTY";
+            if (images[tileName]) {
+              ctx.drawImage(images[tileName], x, y, cellSize, cellSize);
+            }
           }
         }
-        updateCarDisplay();
-        updateDestinationDisplay();
-        updateJSONView();
+
+        // Draw cars
+        placedCars.forEach((car) => {
+          ctx.save();
+          ctx.translate(
+            car.x * cellSize + cellSize / 2,
+            car.y * cellSize + cellSize / 2
+          );
+          ctx.rotate(((car.direction - 1) * Math.PI) / 2);
+          ctx.drawImage(
+            carImage,
+            -cellSize / 2,
+            -cellSize / 2,
+            cellSize,
+            cellSize
+          );
+          ctx.restore();
+        });
+
+        // Draw destination
+        if (destination) {
+          ctx.fillStyle = "red";
+          ctx.beginPath();
+          ctx.arc(
+            destination.x * cellSize + cellSize / 2,
+            destination.y * cellSize + cellSize / 2,
+            cellSize / 4,
+            0,
+            2 * Math.PI
+          );
+          ctx.fill();
+        }
+
+        ctx.restore();
       }
 
       function updateCell(row, col) {
@@ -156,74 +267,19 @@
           destination = { x: col, y: row };
         } else if (selectedItem.value !== "car") {
           grid[row][col] = selectedItem.value;
-          const cells = document.getElementById("grid").children;
-          const index = row * gridSize.cols + col;
-          const cell = cells[index];
-          if (cell) {
-            const imagePath = `./src/images/${selectedItem.name}.png`;
-            cell.style.backgroundImage = `url('${imagePath}')`;
-          }
         } else {
           const existingCarIndex = placedCars.findIndex(
             (car) => car.x === col && car.y === row
           );
           if (existingCarIndex !== -1) {
-            // Rotate the existing car
             placedCars[existingCarIndex].direction =
               (placedCars[existingCarIndex].direction + 1) % 4;
           } else {
-            // Place a new car
-            placedCars.push({ x: col, y: row, direction: 1 }); // Direction 1 corresponds to the car's direction in the image
+            placedCars.push({ x: col, y: row, direction: 1 });
           }
         }
-        updateCarDisplay();
-        updateDestinationDisplay();
+        drawGrid();
         updateJSONView();
-      }
-
-      function updateCarDisplay() {
-        const cells = document.getElementById("grid").children;
-        for (let i = 0; i < cells.length; i++) {
-          const carElement = cells[i].querySelector(".car-indicator");
-          if (carElement) carElement.remove();
-        }
-        placedCars.forEach((car) => {
-          const index = car.y * gridSize.cols + car.x;
-          const cell = cells[index];
-          if (cell) {
-            const carElement = document.createElement("div");
-            carElement.className =
-              "car-indicator absolute inset-0 bg-cover bg-center";
-            carElement.style.backgroundImage = `url('./src/images/Car 1.png')`;
-            carElement.style.transform = `rotate(${
-              (car.direction - 1) * 90
-            }deg)`;
-            cell.appendChild(carElement);
-          }
-        });
-      }
-
-      function updateDestinationDisplay() {
-        const cells = document.getElementById("grid").children;
-        for (let i = 0; i < cells.length; i++) {
-          const destinationElement = cells[i].querySelector(
-            ".destination-indicator"
-          );
-          if (destinationElement) destinationElement.remove();
-        }
-        if (destination) {
-          const index = destination.y * gridSize.cols + destination.x;
-          const cell = cells[index];
-          if (cell) {
-            const destinationElement = document.createElement("div");
-            destinationElement.className =
-              "destination-indicator absolute inset-0 flex items-center justify-center";
-            const dot = document.createElement("div");
-            dot.className = "w-6 h-6 bg-red-500 rounded-full";
-            destinationElement.appendChild(dot);
-            cell.appendChild(destinationElement);
-          }
-        }
       }
 
       function updateJSONView() {
@@ -279,16 +335,17 @@
       }
 
       function resizeGrid() {
-        const rows = prompt("Enter number of rows:", gridSize.rows);
-        const cols = prompt("Enter number of columns:", gridSize.cols);
+        const rows = parseInt(document.getElementById("rowsInput").value);
+        const cols = parseInt(document.getElementById("colsInput").value);
         if (rows && cols) {
-          gridSize = { rows: parseInt(rows), cols: parseInt(cols) };
+          gridSize = { rows: rows, cols: cols };
           grid = Array(gridSize.rows)
             .fill()
             .map(() => Array(gridSize.cols).fill(0));
           placedCars = [];
           destination = null;
-          createGrid();
+          drawGrid();
+          updateJSONView();
         }
       }
 
@@ -298,7 +355,8 @@
           .map(() => Array(gridSize.cols).fill(0));
         placedCars = [];
         destination = null;
-        createGrid();
+        drawGrid();
+        updateJSONView();
       }
 
       function updateMaxTracks() {
@@ -306,21 +364,142 @@
         updateJSONView();
       }
 
-      // Handle mouse wheel scrolling
-      document.addEventListener("wheel", (event) => {
-        if (event.deltaY > 0) {
-          currentSelectionIndex =
-            (currentSelectionIndex + 1) % currentItems.length;
-        } else {
+      function resizeCanvas() {
+        const container = document.getElementById("canvasContainer");
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        drawGrid();
+      }
+
+      canvas.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        lastMousePos = { x: e.clientX, y: e.clientY };
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          const dx = e.clientX - lastMousePos.x;
+          const dy = e.clientY - lastMousePos.y;
+          panOffset.x += dx;
+          panOffset.y += dy;
+          lastMousePos = { x: e.clientX, y: e.clientY };
+          drawGrid();
+        }
+      });
+
+      canvas.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+
+      canvas.addEventListener("mouseleave", () => {
+        isDragging = false;
+      });
+
+      canvas.addEventListener("click", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left - panOffset.x) / scale;
+        const y = (e.clientY - rect.top - panOffset.y) / scale;
+        const col = Math.floor(x / cellSize);
+        const row = Math.floor(y / cellSize);
+        if (
+          row >= 0 &&
+          row < gridSize.rows &&
+          col >= 0 &&
+          col < gridSize.cols
+        ) {
+          updateCell(row, col);
+        }
+      });
+
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const scalePoint = {
+          x: (mouseX - panOffset.x) / scale,
+          y: (mouseY - panOffset.y) / scale,
+        };
+
+        scale *= zoom;
+
+        panOffset.x = mouseX - scalePoint.x * scale;
+        panOffset.y = mouseY - scalePoint.y * scale;
+
+        drawGrid();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "q" || e.key === "Q") {
           currentSelectionIndex =
             (currentSelectionIndex - 1 + currentItems.length) %
             currentItems.length;
+          createDock();
+        } else if (e.key === "e" || e.key === "E") {
+          currentSelectionIndex =
+            (currentSelectionIndex + 1) % currentItems.length;
+          createDock();
         }
-        createDock(); // Refresh dock to update highlighting
       });
+      window.addEventListener("resize", resizeCanvas);
+      document
+        .getElementById("rowsInput")
+        .addEventListener("change", updateGridSize);
+      document
+        .getElementById("colsInput")
+        .addEventListener("change", updateGridSize);
 
+      function updateGridSize() {
+        const rows = parseInt(document.getElementById("rowsInput").value);
+        const cols = parseInt(document.getElementById("colsInput").value);
+        if (rows > 0 && cols > 0) {
+          gridSize = { rows, cols };
+          grid = Array(gridSize.rows)
+            .fill()
+            .map(() => Array(gridSize.cols).fill(0));
+          placedCars = [];
+          destination = null;
+          drawGrid();
+          updateJSONView();
+        }
+      }
+      function resetView() {
+        const canvasRect = canvas.getBoundingClientRect();
+        const gridWidth = gridSize.cols * cellSize;
+        const gridHeight = gridSize.rows * cellSize;
+
+        // Calculate the scale to fit the entire grid
+        const scaleX = canvasRect.width / gridWidth;
+        const scaleY = canvasRect.height / gridHeight;
+        scale = Math.min(scaleX, scaleY, 1); // Use the smaller scale, but don't zoom in past 1:1
+
+        // Center the grid
+        panOffset.x = (canvasRect.width - gridWidth * scale) / 2;
+        panOffset.y = (canvasRect.height - gridHeight * scale) / 2;
+
+        drawGrid();
+      }
+      document
+        .getElementById("resetViewBtn")
+        .addEventListener("click", resetView);
+      // Initialize the application
       createDock();
-      createGrid();
+      resizeCanvas();
+      resetView();
+      // Wait for images to load before initial draw
+      Promise.all(
+        Object.values(images).map(
+          (img) =>
+            new Promise((resolve) => {
+              if (img.complete) resolve();
+              else img.onload = resolve;
+            })
+        )
+      ).then(() => {
+        resetView();
+      });
     </script>
   </body>
 </html>
