@@ -29,7 +29,7 @@ def solve(data: dict, method: str = "bfs"):
     grid = Grid(data["grid"])
     state = State(grid, trains, Position(*data["destination"]))
     queue = deque([state])
-    # img = drawer.draw(state.grid)
+    # img = drawer.draw(state)
     # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
     # cv2.waitKey(1000)
 
@@ -45,6 +45,10 @@ def solve(data: dict, method: str = "bfs"):
 
         if state.placed_tiles > best_min_placed_tiles:
             continue
+
+        # img = drawer.draw(state)
+        # cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
+        # cv2.waitKey(1)
         result = state.simulate()
 
         if result[0] == "empty_pos_reached":

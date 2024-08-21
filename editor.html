@@ -422,7 +422,7 @@
         const data = {
           grid: grid,
           destination: destination ? [destination.x, destination.y] : null,
-          trains: placedCars.map((car) => ({ ...car, order: 1 })),
+          trains: placedCars.map((car) => ({ ...car })),
           max_tracks: maxTracks,
         };
         const jsonString = JSON.stringify(data, null, 2);
