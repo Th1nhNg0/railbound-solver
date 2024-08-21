@@ -134,6 +134,13 @@
           >
             Clear Grid
           </button>
+          <button
+            id="toggleLayer"
+            class="bg-blue-500 text-white px-4 py-2 rounded"
+            onclick="toggleLayer()"
+          >
+            Toggle Layer
+          </button>
         </div>
 
         <div
@@ -209,6 +216,10 @@
       let grid = Array(gridSize.rows)
         .fill()
         .map(() => Array(gridSize.cols).fill(0));
+      let numberLayer = Array(gridSize.rows)
+        .fill()
+        .map(() => Array(gridSize.cols).fill(0));
+      let isNumberLayerActive = false;
       let placedCars = [];
       let destination = null;
       let maxTracks = 3;
@@ -248,8 +259,16 @@
           })
         );
       }
+      function toggleLayer() {
+        isNumberLayerActive = !isNumberLayerActive;
 
-      function createDock() {
+        createDock(); // Automatically calls the correct dock creation function
+
+        draw();
+
+        updateJSONView(); // Update the JSON view to reflect the current state
+      }
+      function createGridDock() {
         const dockElement = document.getElementById("dock");
         dockElement.innerHTML = "";
 
@@ -284,12 +303,33 @@
         });
       }
 
-      function selectDockItem(index) {
-        currentSelectionIndex = index;
-        createDock();
+      function createNumberDock() {
+        const dockElement = document.getElementById("dock");
+        dockElement.innerHTML = "";
+
+        const buttons = [
+          { label: "Increase", action: 1 },
+          { label: "Decrease", action: -1 },
+          { label: "Reset", action: 0 },
+        ];
+
+        buttons.forEach((btn, index) => {
+          const button = document.createElement("button");
+          button.className = `w-16 h-16 bg-gray-700 border border-gray-600 rounded ${
+            index === currentSelectionIndex ? "ring-2 ring-blue-500" : ""
+          }`;
+          button.textContent = btn.label;
+
+          button.onclick = () => {
+            currentSelectionIndex = index;
+            createNumberDock();
+          };
+
+          dockElement.appendChild(button);
+        });
       }
 
-      function drawGrid() {
+      function drawGridOnly() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.translate(panOffset.x, panOffset.y);
@@ -407,6 +447,18 @@
         ctx.restore();
       }
 
+      function createDock() {
+        if (isNumberLayerActive) {
+          createNumberDock();
+        } else {
+          createGridDock();
+        }
+      }
+      function selectDockItem(index) {
+        currentSelectionIndex = index;
+        createDock();
+      }
+
       function changeCarOrder(x, y, change) {
         const carIndex = placedCars.findIndex(
           (car) => car.x === x && car.y === y
@@ -417,7 +469,7 @@
             1,
             Math.min(maxOrder, placedCars[carIndex].order + change)
           );
-          drawGrid();
+          draw();
           updateJSONView();
         }
       }
@@ -427,35 +479,47 @@
         );
         if (carIndex !== -1) {
           placedCars.splice(carIndex, 1);
-          drawGrid();
+          draw();
           updateJSONView();
         }
       }
       function updateCell(row, col) {
-        const selectedItem = currentItems[currentSelectionIndex];
-        if (selectedItem.value === "destination") {
-          destination = { x: col, y: row };
-        } else if (selectedItem.value !== "car") {
-          grid[row][col] = selectedItem.value;
-        } else if (selectedItem.value === "car") {
-          const existingCarIndex = placedCars.findIndex(
-            (car) => car.x === col && car.y === row
-          );
-          if (existingCarIndex !== -1) {
-            placedCars[existingCarIndex].direction =
-              (placedCars[existingCarIndex].direction + 1) % 4;
-          } else {
-            placedCars.push({ x: col, y: row, direction: 1, order: 1 });
+        if (isNumberLayerActive) {
+          // Handle number layer updates
+          if (currentSelectionIndex === 0) {
+            numberLayer[row][col]++;
+          } else if (currentSelectionIndex === 1) {
+            numberLayer[row][col]--;
+          } else if (currentSelectionIndex === 2) {
+            numberLayer[row][col] = 0;
+          }
+        } else {
+          const selectedItem = currentItems[currentSelectionIndex];
+          if (selectedItem.value === "destination") {
+            destination = { x: col, y: row };
+          } else if (selectedItem.value !== "car") {
+            grid[row][col] = selectedItem.value;
+          } else if (selectedItem.value === "car") {
+            const existingCarIndex = placedCars.findIndex(
+              (car) => car.x === col && car.y === row
+            );
+            if (existingCarIndex !== -1) {
+              placedCars[existingCarIndex].direction =
+                (placedCars[existingCarIndex].direction + 1) % 4;
+            } else {
+              placedCars.push({ x: col, y: row, direction: 1, order: 1 });
+            }
           }
         }
 
-        drawGrid();
+        draw();
         updateJSONView();
       }
 
       function updateJSONView() {
         const data = {
           grid: grid,
+          numberLayer: numberLayer,
           destination: destination ? [destination.x, destination.y] : null,
           trains: placedCars.map((car) => ({ ...car })),
           max_tracks: maxTracks,
@@ -464,7 +528,7 @@
           let result = "{\n";
           for (const key in jsonObject) {
             if (jsonObject.hasOwnProperty(key)) {
-              if (key === "grid") {
+              if (key === "grid" || key === "numberLayer") {
                 result += `  "${key}": [\n`;
                 jsonObject[key].forEach((row) => {
                   result += `    [${row.join(", ")}],\n`;
@@ -494,6 +558,7 @@
           destination: destination ? [destination.x, destination.y] : null,
           trains: placedCars.map((car) => ({ ...car })),
           max_tracks: maxTracks,
+          numberLayer: numberLayer, // Add numberLayer to JSON
         };
         const jsonString = JSON.stringify(data, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
@@ -520,8 +585,13 @@
                 : null;
               placedCars = data.trains;
               maxTracks = data.max_tracks;
+              numberLayer =
+                data.numberLayer ||
+                Array(gridSize.rows)
+                  .fill()
+                  .map(() => Array(gridSize.cols).fill(0)); // Load or reset numberLayer
               gridSize = { rows: grid.length, cols: grid[0].length };
-              drawGrid();
+              draw();
               updateJSONView();
               resetView();
             };
@@ -540,7 +610,7 @@
             .map(() => Array(gridSize.cols).fill(0));
           placedCars = [];
           destination = null;
-          drawGrid();
+          draw();
           updateJSONView();
         }
       }
@@ -549,9 +619,12 @@
         grid = Array(gridSize.rows)
           .fill()
           .map(() => Array(gridSize.cols).fill(0));
+        numberLayer = Array(gridSize.rows)
+          .fill()
+          .map(() => Array(gridSize.cols).fill(0));
         placedCars = [];
         destination = null;
-        drawGrid();
+        draw();
         updateJSONView();
       }
 
@@ -564,7 +637,7 @@
         const container = document.getElementById("canvasContainer");
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
-        drawGrid();
+        draw();
       }
 
       canvas.addEventListener("mousedown", (e) => {
@@ -579,7 +652,7 @@
           panOffset.x += dx;
           panOffset.y += dy;
           lastMousePos = { x: e.clientX, y: e.clientY };
-          drawGrid();
+          draw();
         }
       });
 
@@ -604,22 +677,7 @@
           col >= 0 &&
           col < gridSize.cols
         ) {
-          const cellX = mouseX % cellSize;
-          const cellY = mouseY % cellSize;
-
-          if (cellY < 20) {
-            if (cellX > cellSize - 20) {
-              removeCar(col, row);
-            } else if (cellX > cellSize - 40) {
-              changeCarOrder(col, row, 1);
-            } else if (cellX > cellSize - 60) {
-              changeCarOrder(col, row, -1);
-            } else {
-              updateCell(row, col);
-            }
-          } else {
-            updateCell(row, col);
-          }
+          updateCell(row, col);
         }
       });
 
@@ -640,18 +698,51 @@
 
           panOffset.x = mouseX - scalePoint.x * scale;
           panOffset.y = mouseY - scalePoint.y * scale;
-
-          drawGrid();
+          draw();
         } else {
+          const length = isNumberLayerActive ? 3 : currentItems.length;
           currentSelectionIndex =
-            (currentSelectionIndex +
-              (e.deltaY > 0 ? 1 : -1) +
-              currentItems.length) %
-            currentItems.length;
+            (currentSelectionIndex + (e.deltaY < 0 ? 1 : length - 1)) % length;
           createDock();
         }
+        draw();
       });
 
+      function drawOverlayOnly() {
+        ctx.save();
+
+        // Apply the same transformations as the grid
+        ctx.translate(panOffset.x, panOffset.y);
+        ctx.scale(scale, scale);
+
+        // Draw the semi-transparent black overlay on each cell
+        for (let i = 0; i < gridSize.rows; i++) {
+          for (let j = 0; j < gridSize.cols; j++) {
+            const x = j * cellSize;
+            const y = i * cellSize;
+
+            // Draw the black overlay on each grid cell
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(x, y, cellSize, cellSize);
+
+            // Draw the number in white on top of the overlay
+            ctx.fillStyle = "#fff";
+            ctx.font = "20px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(numberLayer[i][j], x + cellSize / 2, y + cellSize / 2);
+          }
+        }
+
+        ctx.restore();
+      }
+
+      function draw() {
+        drawGridOnly(); // Always draw the grid
+        if (isNumberLayerActive) {
+          drawOverlayOnly(); // Draw the overlay if the number layer is active
+        }
+      }
       window.addEventListener("resize", resizeCanvas);
       document
         .getElementById("rowsInput")
@@ -670,7 +761,7 @@
             .map(() => Array(gridSize.cols).fill(0));
           placedCars = [];
           destination = null;
-          drawGrid();
+          draw();
           updateJSONView();
           resetView();
         }
@@ -689,7 +780,7 @@
         panOffset.x = (canvasRect.width - gridWidth * scale) / 2;
         panOffset.y = (canvasRect.height - gridHeight * scale) / 2;
 
-        drawGrid();
+        draw();
       }
       document
         .getElementById("resetViewBtn")
@@ -708,7 +799,7 @@
         .then(() => {
           createDock();
           resizeCanvas();
-          drawGrid();
+          draw();
           resetView();
           updateJSONView();
 
