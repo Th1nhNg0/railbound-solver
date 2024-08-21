@@ -5,9 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tile and Car Editor (Canvas with Pan and Zoom)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom scrollbar styles */
+      #jsonView::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      #jsonView::-webkit-scrollbar-track {
+        background: #2d3748;
+        border-radius: 5px;
+      }
+
+      #jsonView::-webkit-scrollbar-thumb {
+        background: #4a5568;
+        border-radius: 5px;
+        transition: background 0.2s ease-in-out;
+      }
+
+      #jsonView::-webkit-scrollbar-thumb:hover {
+        background: #718096;
+      }
+
+      /* For Firefox */
+      #jsonView {
+        scrollbar-width: thin;
+        scrollbar-color: #4a5568 #2d3748;
+      }
+    </style>
   </head>
   <body
-    class="bg-gray-900 flex flex-col h-screen overflow-hidden text-gray-200"
+    class="bg-gray-900 flex flex-col h-screen gap-3 p-3 overflow-hidden text-gray-200"
   >
     <div
       id="loading"
@@ -15,22 +42,48 @@
     >
       Loading....
     </div>
-    <div class="flex flex-col md:flex-row flex-1 p-2 gap-2 overflow-hidden">
-      <divØ
-        class="w-full md:w-1/4 bg-gray-800 rounded-lg shadow-sm p-4 flex flex-col overflow-hidden"
-      >
-        <h2 class="text-lg font-semibold mb-2">Live JSON View</h2>
-        <pre
-          id="jsonView"
-          class="bg-gray-700 flex-1 p-2 mb-2 rounded-lg overflow-auto text-xs"
-        ></pre>
-        <button
-          onclick="saveJSON()"
-          class="border border-gray-600 text-gray-300 px-4 py-2 rounded hover:bg-gray-700"
+    <div class="flex flex-col md:flex-row flex-1 gap-3 overflow-hidden h-full">
+      <div class="w-full md:w-1/4 flex flex-col gap-3 h-full">
+        <div class="bg-gray-800 rounded-lg shadow-sm p-4">
+          <h2 class="text-xl font-semibold mb-2">Basic Controls</h2>
+          <ul class="list-inside">
+            <li><strong>Left Click</strong>: Place a tile on the grid</li>
+            <li>
+              <strong>Mouse Wheel</strong>: Cycle through available tile types
+            </li>
+            <li>
+              <strong>Ctrl + Mouse Wheel</strong>: Zoom in or out of the canvas
+            </li>
+            <li>
+              <strong>Click and Drag</strong>: Pan the view around the canvas
+            </li>
+          </ul>
+        </div>
+        <div
+          class="flex-1 flex flex-col bg-gray-800 rounded-lg shadow-sm p-4 overflow-hidden"
         >
-          Save JSON
-        </button>
-      </divØ>
+          <h2 class="text-lg font-semibold mb-2">JSON View</h2>
+          <pre
+            id="jsonView"
+            class="bg-gray-700 p-2 flex-1 rounded-lg text-xs overflow-auto"
+          ></pre>
+          <div class="flex gap-3 mt-3">
+            <button
+              onclick="loadJson()"
+              class="border flex-1 border-gray-600 text-gray-300 px-4 py-2 rounded hover:bg-gray-700"
+            >
+              Load JSON
+            </button>
+            <button
+              onclick="saveJSON()"
+              class="bg-green-500 flex-1 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Save JSON
+            </button>
+          </div>
+        </div>
+        <input type="file" id="jsonFileInput" class="hidden" accept=".json" />
+      </div>
 
       <div
         class="w-full md:w-3/4 bg-gray-800 rounded-lg shadow-sm flex flex-col p-4 overflow-hidden"
@@ -73,7 +126,10 @@
           </button>
         </div>
 
-        <div id="canvasContainer" class="flex-1 overflow-hidden relative">
+        <div
+          id="canvasContainer"
+          class="flex-1 overflow-hidden relative border rounded-lg border-gray-700"
+        >
           <div id="resetViewTooltip" class="absolute top-4 right-4 z-10">
             <button
               id="resetViewBtn"
@@ -101,10 +157,11 @@
         </div>
       </div>
     </div>
-    <div class="p-2">
+
+    <div>
       <div
         id="dock"
-        class="flex flex-wrap gap-2 p-2 bg-gray-800 border border-gray-700 shadow-sm rounded-lg overflow-x-auto"
+        class="flex gap-2 p-2 bg-gray-800 border border-gray-700 shadow-sm rounded-lg overflow-x-auto"
       ></div>
     </div>
 
@@ -188,12 +245,12 @@
 
         currentItems.forEach((item, index) => {
           const button = document.createElement("button");
-          button.className = `w-12 h-12 flex-shrink-0 flex flex-col items-center justify-center bg-gray-700 border border-gray-600 rounded ${
+          button.className = `w-16 h-16 flex-shrink-0 flex flex-col items-center justify-center bg-gray-700 border border-gray-600 rounded ${
             index === currentSelectionIndex ? "ring-2 ring-blue-500" : ""
           }`;
 
           const icon = document.createElement("div");
-          icon.className = "w-8 h-8 bg-cover bg-center mb-1";
+          icon.className = "w-12 h-12 bg-cover bg-center mb-1";
           if (item.value === "car") {
             icon.style.backgroundImage = `url('./src/images/Car 1.png')`;
           } else if (item.value === "destination") {
@@ -204,13 +261,16 @@
           }
 
           const label = document.createElement("span");
-          label.className = "text-[6px] text-center text-gray-300";
+          label.className = "text-[9px] text-center text-gray-300";
           label.textContent = item.name;
 
           button.appendChild(icon);
           button.appendChild(label);
           button.onclick = () => selectDockItem(index);
           dockElement.appendChild(button);
+          if (index === currentSelectionIndex) {
+            button.focus();
+          }
         });
       }
 
@@ -414,7 +474,6 @@
         }
 
         const jsonString = customPrettyPrint(data);
-        console.log(jsonString);
         document.getElementById("jsonView").textContent = jsonString;
       }
 
@@ -433,6 +492,28 @@
         a.download = "tile_layout.json";
         a.click();
         URL.revokeObjectURL(url);
+      }
+
+      function loadJson() {
+        document.getElementById("jsonFileInput").click();
+
+        document.getElementById("jsonFileInput").onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const data = JSON.parse(e.target.result);
+              grid = data.grid;
+              destination = data.destination;
+              placedCars = data.trains;
+              maxTracks = data.max_tracks;
+              gridSize = { rows: grid.length, cols: grid[0].length };
+              drawGrid();
+              updateJSONView();
+            };
+            reader.readAsText(file);
+          }
+        };
       }
 
       function resizeGrid() {
@@ -530,36 +611,33 @@
 
       canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
-        const zoom = e.deltaY < 0 ? 1.1 : 0.9;
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        if (e.ctrlKey) {
+          const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
 
-        const scalePoint = {
-          x: (mouseX - panOffset.x) / scale,
-          y: (mouseY - panOffset.y) / scale,
-        };
+          const scalePoint = {
+            x: (mouseX - panOffset.x) / scale,
+            y: (mouseY - panOffset.y) / scale,
+          };
 
-        scale *= zoom;
+          scale *= zoom;
 
-        panOffset.x = mouseX - scalePoint.x * scale;
-        panOffset.y = mouseY - scalePoint.y * scale;
+          panOffset.x = mouseX - scalePoint.x * scale;
+          panOffset.y = mouseY - scalePoint.y * scale;
 
-        drawGrid();
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "q" || e.key === "Q") {
+          drawGrid();
+        } else {
           currentSelectionIndex =
-            (currentSelectionIndex - 1 + currentItems.length) %
+            (currentSelectionIndex +
+              (e.deltaY > 0 ? 1 : -1) +
+              currentItems.length) %
             currentItems.length;
-          createDock();
-        } else if (e.key === "e" || e.key === "E") {
-          currentSelectionIndex =
-            (currentSelectionIndex + 1) % currentItems.length;
           createDock();
         }
       });
+
       window.addEventListener("resize", resizeCanvas);
       document
         .getElementById("rowsInput")
