@@ -9,6 +9,12 @@
   <body
     class="bg-gray-900 flex flex-col h-screen overflow-hidden text-gray-200"
   >
+    <div
+      id="loading"
+      class="absolute inset-0 bg-gray-900 z-50 flex justify-center items-center"
+    >
+      Loading....
+    </div>
     <div class="flex flex-col md:flex-row flex-1 p-2 gap-2 overflow-hidden">
       <divØ
         class="w-full md:w-1/4 bg-gray-800 rounded-lg shadow-sm p-4 flex flex-col overflow-hidden"
@@ -151,14 +157,29 @@
       // Load images
       const images = {};
       currentItems.forEach((item) => {
-        if (item.name !== "Car" && item.name !== "Destination") {
+        if (item.name !== "Train" && item.name !== "Destination") {
           const img = new Image();
           img.src = `./src/images/${item.name}.png`;
           images[item.name] = img;
         }
       });
-      const carImage = new Image();
-      carImage.src = "./src/images/Car 1.png";
+      const carImages = {};
+
+      function preloadCarImages() {
+        return Promise.all(
+          Array.from({ length: 9 }, (_, i) => i + 1).map((order) => {
+            return new Promise((resolve, reject) => {
+              const img = new Image();
+              img.onload = () => {
+                carImages[order] = img;
+                resolve();
+              };
+              img.onerror = reject;
+              img.src = `./src/images/Car ${order}.png`;
+            });
+          })
+        );
+      }
 
       function createDock() {
         const dockElement = document.getElementById("dock");
@@ -226,7 +247,7 @@
           }
         }
 
-        // Draw cars
+        // Draw placed cars
         placedCars.forEach((car) => {
           ctx.save();
           ctx.translate(
@@ -234,13 +255,67 @@
             car.y * cellSize + cellSize / 2
           );
           ctx.rotate(((car.direction - 1) * Math.PI) / 2);
+
+          // Load car image based on order
+          const carImg = carImages[car.order] || carImages[1]; // fallback to order 1 if not found
           ctx.drawImage(
-            carImage,
+            carImg,
             -cellSize / 2,
             -cellSize / 2,
             cellSize,
             cellSize
           );
+
+          ctx.resetTransform();
+          ctx.translate(panOffset.x, panOffset.y);
+          ctx.scale(scale, scale);
+
+          // Draw remove button (red X)
+          ctx.fillStyle = "red";
+          ctx.fillRect(
+            car.x * cellSize + cellSize - 20,
+            car.y * cellSize,
+            20,
+            20
+          );
+          ctx.fillStyle = "white";
+          ctx.font = "16px Arial";
+          ctx.fillText(
+            "X",
+            car.x * cellSize + cellSize - 15,
+            car.y * cellSize + 15
+          );
+
+          // Draw increase order button (green +)
+          ctx.fillStyle = "green";
+          ctx.fillRect(
+            car.x * cellSize + cellSize - 40,
+            car.y * cellSize,
+            20,
+            20
+          );
+          ctx.fillStyle = "white";
+          ctx.fillText(
+            "+",
+            car.x * cellSize + cellSize - 35,
+            car.y * cellSize + 15
+          );
+
+          // Draw decrease order button (yellow -)
+          ctx.fillStyle = "yellow";
+          ctx.fillRect(
+            car.x * cellSize + cellSize - 60,
+            car.y * cellSize,
+            20,
+            20
+          );
+          ctx.fillStyle = "black";
+          ctx.fillText(
+            "-",
+            car.x * cellSize + cellSize - 55,
+            car.y * cellSize + 15
+          );
+
           ctx.restore();
         });
 
@@ -261,13 +336,37 @@
         ctx.restore();
       }
 
+      function changeCarOrder(x, y, change) {
+        const carIndex = placedCars.findIndex(
+          (car) => car.x === x && car.y === y
+        );
+        if (carIndex !== -1) {
+          const maxOrder = Object.keys(carImages).length;
+          placedCars[carIndex].order = Math.max(
+            1,
+            Math.min(maxOrder, placedCars[carIndex].order + change)
+          );
+          drawGrid();
+          updateJSONView();
+        }
+      }
+      function removeCar(x, y) {
+        const carIndex = placedCars.findIndex(
+          (car) => car.x === x && car.y === y
+        );
+        if (carIndex !== -1) {
+          placedCars.splice(carIndex, 1);
+          drawGrid();
+          updateJSONView();
+        }
+      }
       function updateCell(row, col) {
         const selectedItem = currentItems[currentSelectionIndex];
         if (selectedItem.value === "destination") {
           destination = { x: col, y: row };
         } else if (selectedItem.value !== "car") {
           grid[row][col] = selectedItem.value;
-        } else {
+        } else if (selectedItem.value === "car") {
           const existingCarIndex = placedCars.findIndex(
             (car) => car.x === col && car.y === row
           );
@@ -275,9 +374,10 @@
             placedCars[existingCarIndex].direction =
               (placedCars[existingCarIndex].direction + 1) % 4;
           } else {
-            placedCars.push({ x: col, y: row, direction: 1 });
+            placedCars.push({ x: col, y: row, direction: 1, order: 1 });
           }
         }
+
         drawGrid();
         updateJSONView();
       }
@@ -286,7 +386,7 @@
         const data = {
           grid: grid,
           destination: destination ? [destination.x, destination.y] : null,
-          trains: placedCars.map((car) => ({ ...car, order: 1 })),
+          trains: placedCars.map((car) => ({ ...car })),
           max_tracks: maxTracks,
         };
         function customPrettyPrint(jsonObject) {
@@ -397,17 +497,33 @@
 
       canvas.addEventListener("click", (e) => {
         const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left - panOffset.x) / scale;
-        const y = (e.clientY - rect.top - panOffset.y) / scale;
-        const col = Math.floor(x / cellSize);
-        const row = Math.floor(y / cellSize);
+        const mouseX = (e.clientX - rect.left - panOffset.x) / scale;
+        const mouseY = (e.clientY - rect.top - panOffset.y) / scale;
+        const col = Math.floor(mouseX / cellSize);
+        const row = Math.floor(mouseY / cellSize);
+
         if (
           row >= 0 &&
           row < gridSize.rows &&
           col >= 0 &&
           col < gridSize.cols
         ) {
-          updateCell(row, col);
+          const cellX = mouseX % cellSize;
+          const cellY = mouseY % cellSize;
+
+          if (cellY < 20) {
+            if (cellX > cellSize - 20) {
+              removeCar(col, row);
+            } else if (cellX > cellSize - 40) {
+              changeCarOrder(col, row, 1);
+            } else if (cellX > cellSize - 60) {
+              changeCarOrder(col, row, -1);
+            } else {
+              updateCell(row, col);
+            }
+          } else {
+            updateCell(row, col);
+          }
         }
       });
 
@@ -485,21 +601,28 @@
         .getElementById("resetViewBtn")
         .addEventListener("click", resetView);
       // Initialize the application
-      createDock();
-      resizeCanvas();
-      resetView();
-      // Wait for images to load before initial draw
-      Promise.all(
-        Object.values(images).map(
+      Promise.all([
+        preloadCarImages(),
+        ...Object.values(images).map(
           (img) =>
             new Promise((resolve) => {
               if (img.complete) resolve();
               else img.onload = resolve;
             })
-        )
-      ).then(() => {
-        resetView();
-      });
+        ),
+      ])
+        .then(() => {
+          createDock();
+          resizeCanvas();
+          drawGrid();
+          resetView();
+          updateJSONView();
+
+          document.getElementById("loading").remove();
+        })
+        .catch((error) => {
+          console.error("Failed to load one or more images:", error);
+        });
     </script>
   </body>
 </html>
