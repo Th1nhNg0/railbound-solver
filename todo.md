@@ -1,3 +1,7 @@
+IMPORTANT:
+
+TODO: Fix the collision when move from a track to invalid track
+
 This is a helper prompt to use in Claude.ai to help made the editor:
 
 ```md

@@ -108,6 +108,7 @@ class State:
                     output_direction = current_tile.get_output_direction(
                         train.direction
                     )
+
                     next_position = train.position + output_direction.delta
                     train.previous_position = train.position
                     train.position = next_position

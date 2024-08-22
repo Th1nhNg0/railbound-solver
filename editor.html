@@ -261,7 +261,7 @@
       }
       function toggleLayer() {
         isNumberLayerActive = !isNumberLayerActive;
-
+        currentSelectionIndex = 0;
         createDock(); // Automatically calls the correct dock creation function
 
         draw();
@@ -704,7 +704,7 @@
         } else {
           const length = isNumberLayerActive ? 3 : currentItems.length;
           currentSelectionIndex =
-            (currentSelectionIndex + (e.deltaY < 0 ? 1 : length - 1)) % length;
+            (currentSelectionIndex + (e.deltaY > 0 ? 1 : length - 1)) % length;
           createDock();
         }
         draw();

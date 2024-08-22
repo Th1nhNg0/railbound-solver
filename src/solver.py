@@ -156,5 +156,5 @@ def run_profile(filepath):
 
 if __name__ == "__main__":
     # run_profile("./src/levels/1-11A.json")
-    solve_one("./src/levels/2-4.json", showImage=True)
+    solve_one("./src/levels/2-5.json", showImage=True)
     # solve_all()
