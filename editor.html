@@ -677,7 +677,23 @@
           col >= 0 &&
           col < gridSize.cols
         ) {
-          updateCell(row, col);
+          const cellX = col * cellSize;
+          const cellY = row * cellSize;
+          const relativeX = mouseX - cellX;
+          const relativeY = mouseY - cellY;
+
+          // Check if click is on car control buttons
+          if (relativeY < 20 && relativeX > cellSize - 60) {
+            if (relativeX > cellSize - 20) {
+              removeCar(col, row);
+            } else if (relativeX > cellSize - 40) {
+              changeCarOrder(col, row, 1);
+            } else {
+              changeCarOrder(col, row, -1);
+            }
+          } else {
+            updateCell(row, col);
+          }
         }
       });
 
