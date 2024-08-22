@@ -608,6 +608,9 @@
           grid = Array(gridSize.rows)
             .fill()
             .map(() => Array(gridSize.cols).fill(0));
+          numberLayer = Array(gridSize.rows)
+            .fill()
+            .map(() => Array(gridSize.cols).fill(0));
           placedCars = [];
           destination = null;
           draw();
