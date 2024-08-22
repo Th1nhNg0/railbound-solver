@@ -48,6 +48,7 @@ class State:
     order_counter: int = 0
     placed_tiles: int = 0
     immutable_positions: Optional[set[Position]] = None
+    effects: Optional[dict[Position, tuple[str, any]]] = None
 
     def __post_init__(self):
         if self.immutable_positions is None:
@@ -71,6 +72,7 @@ class State:
             self.order_counter,
             self.placed_tiles,
             self.immutable_positions,
+            self.effects,
         )
 
     def __deepcopy__(self, memo):
@@ -81,6 +83,7 @@ class State:
             self.order_counter,
             self.placed_tiles,
             self.immutable_positions,
+            self.effects,
         )
 
     def simulate(self):
@@ -92,14 +95,23 @@ class State:
             for train in self.trains:
                 if train.position == self.destination:
                     continue
-
-                output_direction = Tile(
-                    self.grid.get(*train.position)
-                ).get_output_direction(train.direction)
-                next_position = train.position + output_direction.delta
-                train.previous_position = train.position
-                train.position = next_position
-                train.direction = output_direction
+                current_tile = Tile(self.grid.get(*train.position))
+                if train.position in self.effects:
+                    effect = self.effects[train.position]
+                    if effect[0] == "tunnel":
+                        output_direction = copy.copy(effect[2])
+                        next_position = Position(*effect[1]) + output_direction.delta
+                        train.previous_position = train.position
+                        train.position = next_position
+                        train.direction = output_direction
+                else:
+                    output_direction = current_tile.get_output_direction(
+                        train.direction
+                    )
+                    next_position = train.position + output_direction.delta
+                    train.previous_position = train.position
+                    train.position = next_position
+                    train.direction = output_direction
 
                 if (0 <= next_position.x < self.grid.width) and (
                     0 <= next_position.y < self.grid.height
@@ -159,6 +171,7 @@ class State:
                 self.order_counter,
                 self.placed_tiles + len(empty_positions),
                 self.immutable_positions,
+                self.effects,
             )
             for grid in new_grids
         ]

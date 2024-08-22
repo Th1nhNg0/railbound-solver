@@ -92,6 +92,15 @@ class Tile(IntEnum):
             Tile.T_TURN_HLB,
         }
 
+    @property
+    def is_tunnel(self):
+        return self in {
+            Tile.TUNNEL_T,
+            Tile.TUNNEL_R,
+            Tile.TUNNEL_B,
+            Tile.TUNNEL_L,
+        }
+
     def get_output_direction(self, input_direction) -> Direction:
         flow_direction = {
             Tile.EMPTY: {},

@@ -20,7 +20,7 @@ class Draw:
                     f"./src/images/{tile.name}_2.png"
                 )
 
-    def draw(self, state: State, debug: bool = False) -> None:
+    def draw(self, state: State, debug: bool = False, draw_cart: bool = False) -> None:
         grid = state.grid
         image = Image.new(
             "RGBA",
@@ -45,6 +45,64 @@ class Draw:
                         f"{x}, {y}",
                         fill="black",
                     )
+        if draw_cart:
+            for train in state.trains:
+                # draw circle
+                imageDrawer.ellipse(
+                    (
+                        train.position.x * self.image_width + 30,
+                        train.position.y * self.image_height + 30,
+                        train.position.x * self.image_width + 60,
+                        train.position.y * self.image_height + 60,
+                    ),
+                    fill="red",
+                )
+                # draw direction arrow
+                if train.direction == 0:
+                    imageDrawer.line(
+                        (
+                            train.position.x * self.image_width + 45,
+                            train.position.y * self.image_height + 45,
+                            train.position.x * self.image_width + 45,
+                            train.position.y * self.image_height + 15,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+                elif train.direction == 1:
+                    imageDrawer.line(
+                        (
+                            train.position.x * self.image_width + 45,
+                            train.position.y * self.image_height + 45,
+                            train.position.x * self.image_width + 75,
+                            train.position.y * self.image_height + 45,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+                elif train.direction == 2:
+                    imageDrawer.line(
+                        (
+                            train.position.x * self.image_width + 45,
+                            train.position.y * self.image_height + 45,
+                            train.position.x * self.image_width + 45,
+                            train.position.y * self.image_height + 75,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+                elif train.direction == 3:
+                    imageDrawer.line(
+                        (
+                            train.position.x * self.image_width + 45,
+                            train.position.y * self.image_height + 45,
+                            train.position.x * self.image_width + 15,
+                            train.position.y * self.image_height + 45,
+                        ),
+                        fill="black",
+                        width=2,
+                    )
+
         return image
 
 
