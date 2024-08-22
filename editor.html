@@ -600,24 +600,6 @@
         };
       }
 
-      function resizeGrid() {
-        const rows = parseInt(document.getElementById("rowsInput").value);
-        const cols = parseInt(document.getElementById("colsInput").value);
-        if (rows && cols) {
-          gridSize = { rows: rows, cols: cols };
-          grid = Array(gridSize.rows)
-            .fill()
-            .map(() => Array(gridSize.cols).fill(0));
-          numberLayer = Array(gridSize.rows)
-            .fill()
-            .map(() => Array(gridSize.cols).fill(0));
-          placedCars = [];
-          destination = null;
-          draw();
-          updateJSONView();
-        }
-      }
-
       function clearGrid() {
         grid = Array(gridSize.rows)
           .fill()
@@ -625,6 +607,7 @@
         numberLayer = Array(gridSize.rows)
           .fill()
           .map(() => Array(gridSize.cols).fill(0));
+
         placedCars = [];
         destination = null;
         draw();
@@ -776,6 +759,9 @@
         if (rows > 0 && cols > 0) {
           gridSize = { rows, cols };
           grid = Array(gridSize.rows)
+            .fill()
+            .map(() => Array(gridSize.cols).fill(0));
+          numberLayer = Array(gridSize.rows)
             .fill()
             .map(() => Array(gridSize.cols).fill(0));
           placedCars = [];
