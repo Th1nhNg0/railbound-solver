@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 import numpy as np
-from tile import Position, Direction, Tile
+from tile import Position, Direction, Tile, CONNECTABLE_DICT
 from train import Train
 from typing import Optional
+import copy
 
 
 @dataclass
@@ -42,7 +43,7 @@ class State:
                 and 0 <= next_position.y < len(self.grid)
                 and next_position not in self.immutable_positions
             ):
-                pos_to_check.append(next_position)
+                pos_to_check.append((next_position, output_direction))
                 # TODO: SIMULATE INTERACTION OF THE TILE IF NEEDED
 
             if next_position == self.destination:
@@ -93,7 +94,61 @@ class State:
 
     def generate_possible_states(self, positions_to_check):
         # TODO: generate possible states
-        return []
+        new_grids: list = []
+        self._recursive_tile_placement(positions_to_check, 0, self.grid, new_grids)
+        new_states = []
+        for grid in new_grids:
+            new_state = State(
+                grid=grid,
+                trains=copy.copy(self.trains),
+                destination=self.destination,
+                immutable_positions=self.immutable_positions,
+                effects=self.effects,
+                loop_detection=copy.copy(self.loop_detection),
+                order_counter=self.order_counter,
+                placed_tiles=self.placed_tiles + 1,
+            )
+            new_states.append(new_state)
+        return new_states
+
+    def _recursive_tile_placement(
+        self,
+        empty_positions: list[tuple[Position, Direction]],
+        index: int,
+        current_grid: np.ndarray,
+        new_grids: list[np.ndarray],
+    ):
+        if index == len(empty_positions):
+            new_grids.append(current_grid)
+            return
+
+        pos, direction = empty_positions[index]
+        for tile in [
+            Tile.STRAIGHT_H,
+            Tile.STRAIGHT_V,
+            Tile.CURVE_BL,
+            Tile.CURVE_BR,
+            Tile.CURVE_TL,
+            Tile.CURVE_TR,
+        ]:
+            adjacent_pos = pos - direction.delta
+            if 0 <= adjacent_pos.x < len(current_grid[0]) and 0 <= adjacent_pos.y < len(
+                current_grid
+            ):
+                adjacent_tile = Tile(current_grid[adjacent_pos.y][adjacent_pos.x])
+                if (
+                    adjacent_tile != Tile.EMPTY
+                    and not CONNECTABLE_DICT[tile][adjacent_tile][direction.opposite]
+                ):
+                    continue
+
+            new_grid = current_grid.copy()
+            new_grid[pos.y][pos.x] = tile
+            # if tile.is_straight:
+            #     new_grid.add_flow(pos.x, pos.y, direction)
+            self._recursive_tile_placement(
+                empty_positions, index + 1, new_grid, new_grids
+            )
 
 
 if __name__ == "__main__":
