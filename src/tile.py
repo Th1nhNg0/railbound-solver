@@ -1,11 +1,8 @@
 from enum import IntEnum
-from typing import NamedTuple
+from collections import namedtuple
 
 
-class Position(NamedTuple):
-    x: int
-    y: int
-
+class Position(namedtuple("Position", ["x", "y"])):
     def __add__(self, other: "Position") -> "Position":
         return Position(self.x + other.x, self.y + other.y)
 
@@ -13,10 +10,10 @@ class Position(NamedTuple):
         return Position(self.x - other.x, self.y - other.y)
 
     def __copy__(self):
-        return Position(self.x, self.y)
+        return self
 
     def __deepcopy__(self, memo):
-        return Position(self.x, self.y)
+        return self
 
 
 class Direction(IntEnum):
@@ -274,4 +271,4 @@ def make_connectable_dict():
     return data
 
 
-TILES_CONNECT = make_connectable_dict()
+CONNECTABLE_DICT = make_connectable_dict()
