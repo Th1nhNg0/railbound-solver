@@ -66,7 +66,7 @@ def solve(data: dict, method: str = "bfs"):
         effects=effects,
     )
     queue = deque([state])
-    img = drawer.draw(state, debug=True)
+    img = drawer.draw(state, debug=True, draw_cart=True)
     cv2.imshow("image", cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
     cv2.waitKey(1000)
 
@@ -156,5 +156,5 @@ def run_profile(filepath):
 
 if __name__ == "__main__":
     # run_profile("./src/levels/1-11A.json")
-    solve_one("./src/levels/2-5.json", showImage=True)
+    solve_one("./src/levels/2-9.json", showImage=True)
     # solve_all()

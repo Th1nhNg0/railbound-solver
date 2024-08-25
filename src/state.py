@@ -108,7 +108,8 @@ class State:
                     output_direction = current_tile.get_output_direction(
                         train.direction
                     )
-
+                    if output_direction == -1:
+                        return ("wrong_direction", "invalid track direction")
                     next_position = train.position + output_direction.delta
                     train.previous_position = train.position
                     train.position = next_position

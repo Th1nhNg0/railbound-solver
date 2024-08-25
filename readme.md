@@ -1,3 +1,5 @@
+> THIS REPO IS WORK IN PROGRESS, THE CODE IS NOT FUNCTIONAL YET T^T
+
 # Railbound Puzzle Solver
 
 Railbound Puzzle Solver is a Python-based tool designed to solve puzzles from the game Railbound, a comfy, track-bending puzzle game developed by Afterburn. This solver features a graphical editor for recreating Railbound puzzles and an automated solver that can find solutions to complex track layouts.
